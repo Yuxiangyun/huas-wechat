@@ -6,7 +6,7 @@ page {
 .about-container {
   min-height: 100vh;
   /* 底部安全区适配 */
-  padding-bottom: calc(60rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
 

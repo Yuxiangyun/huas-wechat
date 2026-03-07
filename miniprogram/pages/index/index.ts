@@ -162,13 +162,19 @@ Page({
       const sysInfo = wx.getSystemInfoSync();
       const rpxRatio = 750 / sysInfo.windowWidth;
       const windowHeightRpx = sysInfo.windowHeight * rpxRatio;
+      const safeAreaBottomPx = sysInfo.safeArea
+        ? Math.max(0, sysInfo.screenHeight - sysInfo.safeArea.bottom)
+        : 0;
+      const safeAreaBottomRpx = safeAreaBottomPx * rpxRatio;
 
-      // 减去顶部各种固定的高度（Header大约100 + Nav大约80 + TableHeader 80，总计约留白 280rpx）
-      const availableHeight = windowHeightRpx - 280;
+      // 顶部固定区 + 底部 tabbar 和安全区预留，避免最后一节被遮挡且无法滚动
+      const topReserveRpx = 280;
+      const bottomReserveRpx = 140 + safeAreaBottomRpx;
+      const availableHeight = windowHeightRpx - topReserveRpx - bottomReserveRpx;
       let sectionHeight = Math.floor(availableHeight / 5);
 
       // 设置一个保底高度，防止在极其矮的屏幕上压扁
-      if (sectionHeight < 160) sectionHeight = 160;
+      if (sectionHeight < 140) sectionHeight = 140;
 
       this.setData({
         sectionHeight: sectionHeight,

@@ -124,49 +124,7 @@ interface RequestOptions {
   timeout?: number;
 }
 
-const API_BASE_URL_KEY = 'api_base_url';
-
-function getDefaultBaseUrl(): string {
-  try {
-    const sysInfo = wx.getSystemInfoSync();
-    if (sysInfo.platform === 'devtools') {
-      return 'http://localhost:3000';
-    }
-    return '';
-  } catch {
-    return '';
-  }
-}
-
-function getBaseUrl(): string {
-  const app = getApp<IAppOption>();
-  const globalBaseUrl = app && app.globalData ? app.globalData.apiBaseUrl : '';
-  const localBaseUrl = wx.getStorageSync(API_BASE_URL_KEY) as string | '';
-  const extBaseUrl = (() => {
-    try {
-      const extConfig = (typeof wx.getExtConfigSync === 'function'
-        ? wx.getExtConfigSync()
-        : {}) as { apiBaseUrl?: string };
-      return extConfig.apiBaseUrl || '';
-    } catch {
-      return '';
-    }
-  })();
-
-  if (typeof globalBaseUrl === 'string' && globalBaseUrl.trim()) {
-    return globalBaseUrl.trim().replace(/\/$/, '');
-  }
-
-  if (typeof extBaseUrl === 'string' && extBaseUrl.trim()) {
-    return extBaseUrl.trim().replace(/\/$/, '');
-  }
-
-  if (typeof localBaseUrl === 'string' && localBaseUrl.trim()) {
-    return localBaseUrl.trim().replace(/\/$/, '');
-  }
-
-  return getDefaultBaseUrl();
-}
+export const BASE_URL = 'http://10.32.245.18:3000';
 
 function buildUrl(baseUrl: string, path: string, query?: Record<string, unknown>): string {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
@@ -366,15 +324,6 @@ function handleAuthFailure(code: number): void {
 
 function request<T>(options: RequestOptions): Promise<ApiResponse<T>> {
   const { path, method = 'GET', data, auth = true, timeout = 15000 } = options;
-  const baseUrl = getBaseUrl();
-
-  if (!baseUrl) {
-    return Promise.resolve({
-      code: -2,
-      msg: '未配置 API 地址，请先设置 apiBaseUrl',
-      data: null,
-    });
-  }
 
   if (auth && !storage.getToken()) {
     handleAuthFailure(4001);
@@ -385,7 +334,7 @@ function request<T>(options: RequestOptions): Promise<ApiResponse<T>> {
     });
   }
 
-  const url = method === 'GET' ? buildUrl(baseUrl, path, data) : buildUrl(baseUrl, path);
+  const url = method === 'GET' ? buildUrl(BASE_URL, path, data) : buildUrl(BASE_URL, path);
   const header: Record<string, string> = {
     'content-type': 'application/json',
   };
