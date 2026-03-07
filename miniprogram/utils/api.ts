@@ -1,4 +1,5 @@
 import { storage } from './storage';
+import { API_BASE_URL } from './config';
 
 export interface ApiMeta {
   cached?: boolean;
@@ -124,7 +125,11 @@ interface RequestOptions {
   timeout?: number;
 }
 
-export const BASE_URL = 'http://10.32.245.18:3000';
+function normalizeBaseUrl(url: string): string {
+  return (url || '').trim().replace(/\/+$/, '');
+}
+
+export const BASE_URL = normalizeBaseUrl(API_BASE_URL);
 
 function buildUrl(baseUrl: string, path: string, query?: Record<string, unknown>): string {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
@@ -357,10 +362,13 @@ function request<T>(options: RequestOptions): Promise<ApiResponse<T>> {
         }
         resolve(normalized);
       },
-      fail: () => {
+      fail: (error: WechatMiniprogram.GeneralCallbackResult) => {
+        const errMsg = error && typeof error.errMsg === 'string'
+          ? `网络异常：${error.errMsg}`
+          : '网络异常，请稍后重试';
         resolve({
           code: -1,
-          msg: '网络异常，请稍后重试',
+          msg: errMsg,
           data: null,
         });
       },
@@ -465,18 +473,27 @@ export const api = {
   },
 
   async getPublicAnnouncements(): Promise<ApiResponse<PublicAnnouncement[]>> {
-    return {
-      code: 200,
-      msg: 'ok',
-      data: [],
-    };
-  },
+    const response = await request<PublicAnnouncement[]>({
+      path: '/api/public/announcements',
+      method: 'GET',
+      auth: false,
+    });
 
-  async trackTabSwitch(_: { tab: string; studentId?: string; name?: string }): Promise<ApiResponse<{ ok: true }>> {
-    return {
-      code: 200,
-      msg: 'ok',
-      data: { ok: true },
-    };
+    if (response.code === 404) {
+      return {
+        code: 404,
+        msg: '公告接口暂未上线',
+        data: [],
+      };
+    }
+
+    if (response.code === 200) {
+      return {
+        ...response,
+        data: Array.isArray(response.data) ? response.data : [],
+      };
+    }
+
+    return response;
   },
 };

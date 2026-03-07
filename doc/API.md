@@ -1,6 +1,6 @@
 # HUAS Server API 文档
 
-> Base URL: `http://localhost:3000`
+> Base URL: `http://10.32.245.18:3000/`
 
 ## 认证
 

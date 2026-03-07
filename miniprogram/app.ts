@@ -1,10 +1,11 @@
 import { storage } from './utils/storage';
+import { API_BASE_URL } from './utils/config';
 
 App({
   globalData: {
     token: '',
     isLoggedIn: false,
-    apiBaseUrl: 'http://localhost:3000/',
+    apiBaseUrl: API_BASE_URL,
   },
 
   onLaunch() {

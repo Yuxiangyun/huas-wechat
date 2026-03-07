@@ -274,12 +274,18 @@ Page({
       this.setData({ loading: true });
     }
 
+    const customCourseChanged = storage.consumeCustomCourseChanged();
+
     // 垃圾回收：清理超过 24 小时的课表旧缓存，防止 10MB 空间耗尽（Storage Leak 修复）
     try {
       const resList = wx.getStorageInfoSync();
       const ONE_DAY_MS = 24 * 60 * 60 * 1000;
       resList.keys.forEach(key => {
         if (key.startsWith('cache_schedule_')) {
+          if (customCourseChanged) {
+            wx.removeStorageSync(key);
+            return;
+          }
           const item = wx.getStorageSync(key);
           if (item && item.timestamp && Date.now() - item.timestamp > ONE_DAY_MS) {
             wx.removeStorageSync(key);
@@ -287,6 +293,9 @@ Page({
           }
         }
       });
+      if (customCourseChanged) {
+        console.log('🗑️ [Cache] 自定义课程变更，已清空全部课表缓存');
+      }
     } catch (e) {
       console.warn('清理课表缓存失败', e);
     }
@@ -296,26 +305,20 @@ Page({
       const cacheData = wx.getStorageSync(cacheKey);
 
       if (!forceRefresh && cacheData) {
-        const customCourseChanged = storage.consumeCustomCourseChanged();
-        if (customCourseChanged) {
-          wx.removeStorageSync(cacheKey);
-          console.log(`🗑️ [Cache] 课程表(${selectedDate})：自定义课程变化，清除旧缓存`);
+        const { timestamp, data } = cacheData;
+        const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+        if (Date.now() - timestamp < ONE_DAY_MS) {
+          console.log(`✅ [Cache] 课程表(${selectedDate})：命中24小时本地缓存`);
+          this.setData({
+            currentWeek: currentDataSourceIndex === 1 ? '' : (data.week || '未知'),
+            allCourses: Array.isArray(data.courses) ? data.courses : [],
+            scheduleMessage: data.message || '',
+            loading: false
+          });
+          this.processCourses();
+          return;
         } else {
-          const { timestamp, data } = cacheData;
-          const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-          if (Date.now() - timestamp < ONE_DAY_MS) {
-            console.log(`✅ [Cache] 课程表(${selectedDate})：命中24小时本地缓存`);
-            this.setData({
-              currentWeek: currentDataSourceIndex === 1 ? '' : (data.week || '未知'),
-              allCourses: Array.isArray(data.courses) ? data.courses : [],
-              scheduleMessage: data.message || '',
-              loading: false
-            });
-            this.processCourses();
-            return;
-          } else {
-            console.log(`⏳ [Cache] 课程表(${selectedDate})：缓存已过期，时长：${(Date.now() - timestamp) / 1000 / 60 / 60} 小时`);
-          }
+          console.log(`⏳ [Cache] 课程表(${selectedDate})：缓存已过期，时长：${(Date.now() - timestamp) / 1000 / 60 / 60} 小时`);
         }
       }
 
@@ -345,9 +348,12 @@ Page({
           scheduleMessage: res.data.message || ''
         });
         this.processCourses();
+      } else {
+        wx.showToast({ title: res.msg || '获取课表失败', icon: 'none' });
       }
     } catch (err: any) {
       console.error('获取课程表失败:', err);
+      wx.showToast({ title: err?.msg || '获取课表失败', icon: 'none' });
     } finally {
       this.setData({ loading: false });
     }

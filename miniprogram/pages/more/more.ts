@@ -27,6 +27,14 @@ interface GroupedCustomCourse {
     items: DisplayCustomCourse[];
 }
 
+interface TimedCache<T> {
+    timestamp: number;
+    data: T;
+}
+
+const GRADES_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const ECARD_CACHE_TTL_MS = 5 * 60 * 1000;
+
 function setSelectedTab(page: WechatMiniprogram.Page.Instance<any, any>, selected: number): void {
     const getter = (page as WechatMiniprogram.Page.Instance<any, any> & {
         getTabBar?: ((cb?: (tabBar: WechatMiniprogram.Component.TrivialInstance) => void) => WechatMiniprogram.Component.TrivialInstance | undefined);
@@ -45,6 +53,45 @@ function setSelectedTab(page: WechatMiniprogram.Page.Instance<any, any>, selecte
         if (tabBar) {
             tabBar.setData({ selected });
         }
+    }
+}
+
+function showApiErrorToast(msg: string | undefined, fallback: string): void {
+    wx.showToast({
+        title: msg || fallback,
+        icon: 'none',
+    });
+}
+
+function readTimedCache<T>(key: string, ttlMs: number): T | null {
+    try {
+        const raw = wx.getStorageSync(key) as TimedCache<T> | Record<string, unknown> | '' | undefined;
+        if (!raw || typeof raw !== 'object') {
+            return null;
+        }
+
+        const timed = raw as Partial<TimedCache<T>>;
+        if (typeof timed.timestamp !== 'number' || !('data' in timed)) {
+            wx.removeStorageSync(key);
+            return null;
+        }
+
+        if (Date.now() - timed.timestamp > ttlMs) {
+            wx.removeStorageSync(key);
+            return null;
+        }
+
+        return timed.data as T;
+    } catch {
+        return null;
+    }
+}
+
+function writeTimedCache<T>(key: string, data: T): void {
+    try {
+        wx.setStorageSync(key, { timestamp: Date.now(), data } as TimedCache<T>);
+    } catch {
+        // 忽略写入异常，保持功能可用
     }
 }
 
@@ -102,9 +149,12 @@ Page({
             if ((res.code === 0 || res.code === 200) && res.data) {
                 this.setData({ userInfo: res.data });
                 storage.saveUserInfo(res.data);
+            } else {
+                showApiErrorToast(res.msg, '获取用户信息失败');
             }
         } catch (err: any) {
             console.error('获取用户信息失败:', err);
+            showApiErrorToast(err?.msg, '获取用户信息失败');
         }
     },
 
@@ -127,10 +177,10 @@ Page({
         this.setData({ gradesLoading: true });
         try {
             if (!forceRefresh) {
-                const cachedGrades = wx.getStorageSync('cache_grades');
-                const cachedGradesByTerm = wx.getStorageSync('cache_grades_by_term');
+                const cachedGrades = readTimedCache<GradeList>('cache_grades', GRADES_CACHE_TTL_MS);
+                const cachedGradesByTerm = readTimedCache<TermGrades[]>('cache_grades_by_term', GRADES_CACHE_TTL_MS);
                 if (cachedGrades && cachedGradesByTerm) {
-                    console.log('✅ [Cache] 成绩：命中永久本地缓存');
+                    console.log('✅ [Cache] 成绩：命中本地缓存（6小时）');
                     this.setData({ grades: cachedGrades, gradesByTerm: cachedGradesByTerm, gradesLoading: false });
                     return;
                 }
@@ -153,13 +203,15 @@ Page({
                     .map(term => ({ term, items: termMap[term] }));
 
                 this.setData({ grades, gradesByTerm });
-                wx.setStorageSync('cache_grades', grades);
-                wx.setStorageSync('cache_grades_by_term', gradesByTerm);
+                writeTimedCache('cache_grades', grades);
+                writeTimedCache('cache_grades_by_term', gradesByTerm);
             } else {
                 this.setData({ grades: null, gradesByTerm: [] });
+                showApiErrorToast(res.msg, '获取成绩失败');
             }
         } catch (err: any) {
             this.setData({ grades: null, gradesByTerm: [] });
+            showApiErrorToast(err?.msg, '获取成绩失败');
         } finally {
             this.setData({ gradesLoading: false });
         }
@@ -184,9 +236,9 @@ Page({
         this.setData({ ecardLoading: true });
         try {
             if (!forceRefresh) {
-                const cachedECard = wx.getStorageSync('cache_ecard');
+                const cachedECard = readTimedCache<ECardInfo>('cache_ecard', ECARD_CACHE_TTL_MS);
                 if (cachedECard) {
-                    console.log('✅ [Cache] 一卡通：命中永久本地缓存');
+                    console.log('✅ [Cache] 一卡通：命中本地缓存（5分钟）');
                     this.setData({ ecard: cachedECard, ecardLoading: false });
                     return;
                 }
@@ -196,12 +248,14 @@ Page({
             const res = await api.getECard(forceRefresh);
             if ((res.code === 0 || res.code === 200) && res.data) {
                 this.setData({ ecard: res.data });
-                wx.setStorageSync('cache_ecard', res.data);
+                writeTimedCache('cache_ecard', res.data);
             } else {
                 this.setData({ ecard: null });
+                showApiErrorToast(res.msg, '获取一卡通失败');
             }
         } catch (err: any) {
             this.setData({ ecard: null });
+            showApiErrorToast(err?.msg, '获取一卡通失败');
         } finally {
             this.setData({ ecardLoading: false });
         }
