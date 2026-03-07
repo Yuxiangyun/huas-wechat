@@ -1,0 +1,90 @@
+<!-- login.wxml -->
+<view class="login-container">
+  <!-- 标题 -->
+  <view class="header">
+    <view class="title-row">
+      <text class="title-black">文理</text>
+      <text class="title-yellow">小助手</text>
+    </view>
+    <text class="subtitle">Hunan University of Arts and Science</text>
+  </view>
+  <!-- 登录表单 -->
+  <view class="form-container">
+    <!-- 学号 -->
+    <view class="input-group">
+      <text class="input-label">学号</text>
+      <input class="input" type="text" placeholder="12 或 13 位学号，其他未经验证" value="{{username}}" bindinput="onUsernameInput" />
+    </view>
+    <!-- 密码 -->
+    <view class="input-group">
+      <text class="input-label">密码</text>
+      <input class="input" placeholder="智慧文理密码" value="{{password}}" bindinput="onPasswordInput" />
+    </view>
+    <!-- 验证码（仅在需要时显示） -->
+    <view class="input-group captcha-group" wx:if="{{showCaptcha}}">
+      <text class="input-label">验证码</text>
+      <view class="captcha-row">
+        <input class="input captcha-input" type="text" placeholder="请输入验证码" value="{{captcha}}" bindinput="onCaptchaInput" />
+        <view class="captcha-wrapper" bindtap="refreshCaptcha">
+          <image wx:if="{{captchaImage}}" class="captcha-image" src="{{captchaImage}}" mode="aspectFit" />
+          <text wx:else class="captcha-placeholder">{{captchaLoading ? '加载中' : '点击获取'}}</text>
+        </view>
+      </view>
+    </view>
+    <!-- 记住密码 -->
+    <view class="remember-group">
+      <switch class="remember-switch" checked="{{rememberPassword}}" bindchange="onRememberChange" color="#D2FF72" />
+      <text class="remember-text">记住密码</text>
+    </view>
+    <!-- 登录按钮 -->
+    <button class="login-btn {{loading ? 'loading' : ''}}" bindtap="handleLogin" disabled="{{loading}}">
+      {{loading ? '登录中...' : '登录'}}
+    </button>
+    <view class="announcement-entry" bindtap="showAnnouncements">
+      <view class="announcement-link-wrap">
+        <text class="announcement-link">查看系统公告(看看呗)</text>
+        <view wx:if="{{showAnnouncementDot}}" class="announcement-dot"></view>
+      </view>
+    </view>
+    <!-- 自动登录提示 -->
+    <view wx:if="{{autoLoginTip}}" class="auto-login-tip">
+      <text>{{autoLoginTip}}</text>
+    </view>
+    <!-- 错误提示 -->
+    <view wx:if="{{errorMsg}}" class="error-msg">
+      <text>{{errorMsg}}</text>
+    </view>
+  </view>
+  <view class="modal-mask" wx:if="{{showAnnouncementsModal}}" bindtap="hideAnnouncements">
+    <view class="modal-content" catchtap="noop">
+      <view class="modal-header">
+        <text class="modal-title">系统公告</text>
+        <view class="modal-close" bindtap="hideAnnouncements">×</view>
+      </view>
+      <scroll-view scroll-y class="modal-body announcement-scroll">
+        <view wx:if="{{announcements.length === 0}}" class="empty-state">
+          <text class="empty-text">暂无公告</text>
+        </view>
+        <view wx:else class="announcement-list">
+          <view wx:for="{{announcements}}" wx:key="id" class="announcement-item type-{{item.type}}">
+            <view class="announcement-item-header">
+              <text class="announcement-item-title">{{item.title}}</text>
+              <text class="announcement-item-date">{{item.date}}</text>
+            </view>
+            <view class="announcement-item-content">
+              <text>{{item.content}}</text>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+  <!-- 页脚 -->
+  <view class="footer">
+    <view class="footer-content">
+      <text class="footer-link" bindtap="goToAbout">关于</text>
+      <text class="footer-divider">|</text>
+      <text class="footer-text">反馈信息，使用问题联系：-nullsleep</text>
+    </view>
+  </view>
+</view>

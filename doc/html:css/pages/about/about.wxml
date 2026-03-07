@@ -1,0 +1,62 @@
+<view class="about-container">
+  <view class="hero-section">
+    <view class="title-row">
+      <text class="title-black">文理</text>
+      <text class="title-yellow">小助手</text>
+    </view>
+    <text class="subtitle">{{greetingText}}</text>
+  </view>
+  <view class="content-area">
+    <view class="section">
+      <view class="section-title">Feedback & Share</view>
+      <view class="list-card">
+        <button class="list-row list-row-btn" open-type="share" hover-class="row-hover">
+          <view class="list-content">
+            <text class="list-row-label">推荐给好友</text>
+            <text class="list-row-hint">觉得还行？推荐给你的朋友吧</text>
+          </view>
+          <view class="list-row-tag">分享</view>
+        </button>
+        <view class="list-row" bindtap="copyWechat" hover-class="row-hover">
+          <view class="list-content">
+            <text class="list-row-label">讨论交流</text>
+            <text class="list-row-hint">微信号：-nullsleep (欢迎提意见～)</text>
+          </view>
+          <view class="list-row-tag">{{copyTagText}}</view>
+        </view>
+      </view>
+    </view>
+    <view class="section">
+      <view class="section-title">Features</view>
+      <view class="list-card">
+        <view class="list-row" wx:for="{{features}}" wx:key="label">
+          <view class="list-content">
+            <text class="list-row-label">{{item.label}}</text>
+            <text class="list-row-desc">{{item.desc}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+    <view class="section">
+      <view class="section-title">Instructions</view>
+      <view class="list-card">
+        <view class="list-row" wx:for="{{instructions}}" wx:key="*this">
+          <view class="list-content">
+            <text class="list-row-text">{{item}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+    <view class="section">
+      <view class="section-title">Disclaimer</view>
+      <view class="list-card">
+        <view class="disclaimer-row">
+          <text>本小程序仅供学习交流使用，未存储任何敏感信息。</text>
+        </view>
+      </view>
+    </view>
+  </view>
+  <view class="footer">
+    <text class="footer-text">© 2026 bulala</text>
+  </view>
+</view>

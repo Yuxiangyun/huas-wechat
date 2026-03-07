@@ -1,0 +1,243 @@
+<view class="more-container">
+  <view class="hero-section">
+    <view class="title-row">
+      <text class="title-black">你好，</text>
+      <text class="title-yellow">{{userInfo.name || '同学'}}</text>
+    </view>
+    <text class="subtitle">
+      {{userInfo.studentId || 'STUDENT ID'}} · {{userInfo.className || 'CLASS INFO'}}
+    </text>
+  </view>
+  <view class="content-area">
+    <view class="section">
+      <view class="section-title">Academic Grades</view>
+      <view class="list-card">
+        <view class="list-row" bindtap="toggleGrades" hover-class="row-hover" hover-start-time="0" hover-stay-time="150">
+          <view class="list-content">
+            <text class="list-row-label">成绩单</text>
+            <text class="list-row-hint">历史成绩、学分与绩点统计</text>
+          </view>
+          <view class="list-row-tag" catchtap="refreshGrades" wx:if="{{showGrades}}">刷新</view>
+          <text class="toggle-arrow" wx:else>﹀</text>
+        </view>
+        <view class="expanded-wrapper {{showGrades ? 'show' : ''}}">
+          <view class="expanded-content">
+            <view wx:if="{{gradesLoading}}" class="skeleton-list">
+              <view class="skeleton-summary-item" wx:for="{{2}}" wx:key="*this"></view>
+              <view class="skeleton-list-item" wx:for="{{3}}" wx:key="*this"></view>
+            </view>
+            <block wx:elif="{{grades.summary}}">
+              <view class="grades-summary">
+                <view class="summary-item">
+                  <text class="summary-label">CREDITS</text>
+                  <text class="summary-value">{{grades.summary.totalCredits || 0}}</text>
+                </view>
+                <view class="summary-item">
+                  <text class="summary-label">GPA</text>
+                  <text class="summary-value highlight">{{grades.summary.averageGpa || '--'}}</text>
+                </view>
+              </view>
+              <scroll-view class="grades-list" scroll-y>
+                <block wx:for="{{gradesByTerm}}" wx:key="term">
+                  <view class="term-header">
+                    <text>{{item.term}}</text>
+                  </view>
+                  <view wx:for="{{item.items}}" wx:for-item="grade" wx:key="courseCode" class="grade-item">
+                    <view class="grade-left">
+                      <text class="grade-name">{{grade.courseName}}</text>
+                      <text class="grade-code">
+                        {{grade.courseCode}} · {{grade.courseNature || grade.courseCategory}}
+                      </text>
+                    </view>
+                    <view class="grade-right">
+                      <text class="grade-score {{grade.pass ? 'pass' : 'fail'}}">
+                        {{grade.scoreText}}
+                      </text>
+                      <text class="grade-detail">
+                        学分 {{grade.credit}} · 绩点 {{grade.gpa || '--'}}
+                      </text>
+                    </view>
+                  </view>
+                </block>
+              </scroll-view>
+            </block>
+            <view wx:else class="empty-state-mini">
+              <text class="empty-text">暂无成绩数据</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+    <view class="section">
+      <view class="section-title">Custom Courses</view>
+      <view class="list-card">
+        <view class="list-row" bindtap="toggleCustomCourses" hover-class="row-hover" hover-start-time="0" hover-stay-time="150">
+          <view class="list-content">
+            <text class="list-row-label">自定义课程</text>
+            <text class="list-row-hint">已添加 {{customCourses.length}} 门自定义排课</text>
+          </view>
+          <view class="list-row-tag" catchtap="showAddModal" wx:if="{{showCustomCourses}}">添加</view>
+          <text class="toggle-arrow" wx:else>﹀</text>
+        </view>
+        <view class="expanded-wrapper {{showCustomCourses ? 'show' : ''}}">
+          <view class="expanded-content">
+            <view wx:if="{{customCourseGroups.length > 0}}">
+              <view class="cc-group" wx:for="{{customCourseGroups}}" wx:key="id" wx:for-item="group">
+                <view class="cc-group-header">
+                  <view class="cc-group-title">
+                    <text class="cc-group-name">{{group.name}}</text>
+                   <text class="cc-group-teacher" wx:if="{{group.teacher}}">{{group.teacher}}</text>
+                  </view>
+                  <view class="cc-group-delete" catchtap="deleteCustomCourseGroup" data-groupid="{{group.id}}">
+                    删除
+                  </view>
+                </view>
+                <view class="cc-slot-list">
+                  <view class="cc-slot-card" wx:for="{{group.items}}" wx:key="customId" wx:for-item="slot">
+                    <view class="cc-slot-content">
+                      <text class="cc-slot-time">周{{slot.dayStr}} {{slot.section}}</text>
+                      <text class="cc-slot-location" wx:if="{{slot.location}}">
+                        {{slot.location}}
+                      </text>
+                    </view>
+                    <view class="cc-slot-weeks">
+                      <text>{{slot.weeksText}}</text>
+                    </view>
+                  </view>
+                </view>
+              </view>
+              <view class="list-row cc-clear-all" bindtap="clearAllCustomCourses" hover-class="row-hover" hover-start-time="0" hover-stay-time="150">
+                <text class="danger-text">清除全部自定义课程</text>
+              </view>
+            </view>
+            <view wx:else class="empty-state-mini">
+              <text class="empty-text">暂无数据，点击右上角「添加」</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+    <view class="section">
+      <view class="section-title">Campus Card</view>
+      <view class="list-card">
+        <view class="list-row" bindtap="toggleECard" hover-class="row-hover" hover-start-time="0" hover-stay-time="150">
+          <view class="list-content">
+            <text class="list-row-label">校园卡余额</text>
+            <text class="list-row-hint">一卡通实时余额查询</text>
+          </view>
+          <view class="list-row-tag" catchtap="refreshECard" wx:if="{{showECard}}">刷新</view>
+          <text class="toggle-arrow" wx:else>﹀</text>
+        </view>
+        <view class="expanded-wrapper {{showECard ? 'show' : ''}}">
+          <view class="expanded-content">
+            <view wx:if="{{ecardLoading}}" class="skeleton-ecard">
+              <view class="skeleton-label"></view>
+              <view class="skeleton-balance"></view>
+            </view>
+            <view wx:elif="{{ecard}}" class="ecard-info">
+              <view class="ecard-balance">
+                <text class="balance-label">CURRENT BALANCE</text>
+                <text class="balance-value">¥{{ecard.balance}}</text>
+              </view>
+            </view>
+            <view wx:else class="empty-state-mini">
+              <text class="empty-text">暂无一卡通数据</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+    <view class="section">
+      <view class="section-title">Account Settings</view>
+      <view class="list-card">
+        <view class="list-row" bindtap="handleClearCache" hover-class="row-hover" hover-start-time="0" hover-stay-time="150">
+          <view class="list-content">
+            <text class="list-row-label">一键清除缓存</text>
+            <text class="list-row-hint">保留登录状态、账号信息与自定义课程</text>
+          </view>
+          <view class="list-row-tag">清除</view>
+        </view>
+        <view class="list-row" bindtap="handleLogout" hover-class="row-hover" hover-start-time="0" hover-stay-time="150">
+          <view class="list-content">
+            <text class="list-row-label danger-text">退出登录</text>
+            <text class="list-row-hint">清除本地缓存并返回登录页</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+  <view wx:if="{{showAddModal}}" class="modal-mask" bindtap="hideAddModal">
+    <view class="modal-popup" catchtap="noop">
+      <view class="modal-header">
+        <text class="modal-title">自定义课程</text>
+        <view class="modal-close" bindtap="hideAddModal">×</view>
+      </view>
+      <scroll-view scroll-y class="modal-body">
+        <view class="modal-content">
+          <view class="form-group">
+            <text class="form-label">课程名称 *</text>
+            <input class="form-input" always-embed="{{true}}" placeholder-class="form-input-placeholder" placeholder="请输入课程名称" value="{{formName}}" bindinput="onFormInput" data-field="formName" />
+          </view>
+          <view class="form-group">
+            <text class="form-label">教师 (选填)</text>
+            <input class="form-input" always-embed="{{true}}" placeholder-class="form-input-placeholder" placeholder="请输入授课教师" value="{{formTeacher}}" bindinput="onFormInput" data-field="formTeacher" />
+          </view>
+          <view class="form-group">
+            <text class="form-label">地点 (选填)</text>
+            <input class="form-input" always-embed="{{true}}" placeholder-class="form-input-placeholder" placeholder="请输入上课地点" value="{{formLocation}}" bindinput="onFormInput" data-field="formLocation" />
+          </view>
+          <view class="form-group">
+            <text class="form-label">上课时间 (节次)</text>
+            <view class="time-slots-container">
+              <view class="time-slot-item" wx:for="{{formTimeSlots}}" wx:key="index">
+                <picker class="slot-picker flex-day" mode="selector" range="{{dayOptions}}" value="{{item.dayIndex}}" bindchange="onTimeSlotDayChange" data-index="{{index}}">
+                  <view class="form-picker">
+                    <text>{{dayOptions[item.dayIndex]}}</text>
+                    <text class="picker-arrow">▼</text>
+                  </view>
+                </picker>
+                <picker class="slot-picker flex-section" mode="selector" range="{{sectionNumbers}}" value="{{item.startIndex}}" bindchange="onTimeSlotStartChange" data-index="{{index}}">
+                  <view class="form-picker">
+                    <text>{{sectionNumbers[item.startIndex]}}</text>
+                    <text class="picker-arrow">▼</text>
+                  </view>
+                </picker>
+                <text class="slot-to">至</text>
+                <picker class="slot-picker flex-section" mode="selector" range="{{sectionNumbers}}" value="{{item.endIndex}}" bindchange="onTimeSlotEndChange" data-index="{{index}}">
+                  <view class="form-picker">
+                    <text>{{sectionNumbers[item.endIndex]}}</text>
+                    <text class="picker-arrow">▼</text>
+                  </view>
+                </picker>
+                <view class="slot-delete" catchtap="removeTimeSlot" data-index="{{index}}" wx:if="{{formTimeSlots.length > 1}}">
+                  <text>-</text>
+                </view>
+              </view>
+              <view class="add-slot-btn" bindtap="addTimeSlot">+ 添加时段</view>
+            </view>
+          </view>
+          <view class="form-group">
+            <view class="week-header">
+              <text class="form-label">生效周次</text>
+              <view class="week-actions">
+                <text class="week-action-btn" bindtap="selectAllWeeks">全选</text>
+                <text class="week-action-btn" bindtap="selectOddWeeks">单周</text>
+                <text class="week-action-btn" bindtap="selectEvenWeeks">双周</text>
+                <text class="week-action-btn danger" bindtap="clearAllWeeks">清空</text>
+              </view>
+            </view>
+            <view class="week-grid">
+              <view class="week-chip {{formWeeks[index + 1] ? 'selected' : ''}}" wx:for="{{20}}" wx:key="index" bindtap="onWeekToggle" data-week="{{index + 1}}">
+                <text>{{index + 1}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+      <view class="modal-footer">
+        <view class="modal-cancel-btn" bindtap="hideAddModal">取消</view>
+        <view class="modal-submit-btn" bindtap="submitCustomCourse">保存</view>
+      </view>
+    </view>
+  </view>
+</view>
