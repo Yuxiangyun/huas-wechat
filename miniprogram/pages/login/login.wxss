@@ -144,6 +144,21 @@ page {
   color: var(--text-muted);
 }
 
+.captcha-tip {
+  margin-top: 12rpx;
+  margin-bottom: 24rpx;
+  padding: 20rpx 24rpx;
+  background: rgba(210, 255, 114, 0.16);
+  border-radius: 12rpx;
+}
+
+.captcha-tip text {
+  display: block;
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
 /* 记住密码 */
 .remember-group {
   display: flex;
@@ -224,7 +239,7 @@ page {
 }
 
 /* 公告弹窗 */
-.modal-mask {
+.announcement-modal-mask {
   position: fixed;
   top: 0;
   left: 0;
@@ -238,16 +253,33 @@ page {
   z-index: 1000;
 }
 
-.modal-content {
-  width: 600rpx;
+.announcement-modal {
+  width: calc(100vw - 80rpx);
+  max-width: 640rpx;
+  max-height: 76vh;
   background: #FFFFFF;
   border-radius: 24rpx;
   overflow: hidden;
   box-shadow: 0 16rpx 48rpx rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  animation: announcement-pop 0.24s ease-out;
 }
 
-.modal-header {
-  padding: 36rpx 40rpx 24rpx;
+@keyframes announcement-pop {
+  from {
+    opacity: 0;
+    transform: translateY(16rpx) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.announcement-modal-header {
+  padding: 32rpx 36rpx 20rpx;
   background: #FFFFFF;
   display: flex;
   justify-content: space-between;
@@ -255,13 +287,13 @@ page {
   border-bottom: 1rpx solid rgba(0, 0, 0, 0.04);
 }
 
-.modal-title {
+.announcement-modal-title {
   font-size: 32rpx;
   font-weight: 700;
   color: #111111;
 }
 
-.modal-close {
+.announcement-modal-close {
   font-size: 44rpx;
   color: #AAAAAA;
   line-height: 1;
@@ -269,20 +301,20 @@ page {
   margin: -16rpx -16rpx -16rpx 0;
 }
 
-.modal-body {
-  padding: 40rpx;
-}
-
-.announcement-scroll {
+.announcement-modal-scroll {
+  flex: 1;
+  min-height: 220rpx;
   max-height: 60vh;
   box-sizing: border-box;
+  padding: 0 32rpx 32rpx;
 }
 
-.empty-state {
+.announcement-empty-state {
   text-align: center;
+  padding: 64rpx 0;
 }
 
-.empty-text {
+.announcement-empty-text {
   font-size: 26rpx;
   color: #AAAAAA;
   letter-spacing: 2rpx;
@@ -292,6 +324,7 @@ page {
   display: flex;
   flex-direction: column;
   gap: 24rpx;
+  padding-top: 16rpx;
 }
 
 .announcement-item {
@@ -345,13 +378,6 @@ page {
 }
 
 /* 错误信息 */
-.error-msg {
-  margin-top: 32rpx;
-  text-align: center;
-  color: var(--error-color);
-  font-size: 26rpx;
-}
-
 /* 底部 */
 .footer {
   padding: 48rpx 0;

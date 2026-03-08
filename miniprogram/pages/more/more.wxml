@@ -1,4 +1,4 @@
-<view class="more-container">
+<view class="more-container" style="{{themeStyle}}">
   <view class="hero-section">
     <view class="title-row">
       <text class="title-black">你好，</text>
@@ -9,6 +9,43 @@
     </text>
   </view>
   <view class="content-area">
+    <view class="section">
+      <view class="section-title">Schedule Theme</view>
+      <view class="list-card">
+        <view class="list-row theme-entry-row" bindtap="toggleScheduleThemes" hover-class="row-hover" hover-start-time="0" hover-stay-time="150">
+          <view class="list-content">
+            <text class="list-row-label">课表主题色</text>
+            <text class="list-row-hint">当前：{{currentScheduleThemeName}}，点击立即换肤</text>
+          </view>
+          <view class="theme-entry-actions">
+            <view class="list-row-tag theme-entry-tag">换肤</view>
+            <text class="toggle-arrow">{{showScheduleThemes ? '︿' : '﹀'}}</text>
+          </view>
+        </view>
+        <view class="expanded-wrapper {{showScheduleThemes ? 'show' : ''}}">
+          <view class="expanded-content theme-expanded-content">
+            <view class="theme-card">
+              <view class="theme-grid">
+                <view
+                  class="theme-option {{currentScheduleThemeKey === item.key ? 'selected' : ''}}"
+                  wx:for="{{scheduleThemeOptions}}"
+                  wx:key="key"
+                  data-key="{{item.key}}"
+                  bindtap="onScheduleThemeSelect"
+                >
+                  <view class="theme-swatch" style="background: {{item.accent}};"></view>
+                  <view class="theme-meta">
+                    <text class="theme-name">{{item.name}}</text>
+                    <text class="theme-desc">{{item.description}}</text>
+                  </view>
+                  <text class="theme-check" wx:if="{{currentScheduleThemeKey === item.key}}">✓</text>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
     <view class="section">
       <view class="section-title">Academic Grades</view>
       <view class="list-card">
@@ -22,6 +59,15 @@
         </view>
         <view class="expanded-wrapper {{showGrades ? 'show' : ''}}">
           <view class="expanded-content">
+            <view wx:if="{{gradesRefreshing}}" class="updated-at-hint updated-at-loading">
+              <text>刷新中...</text>
+            </view>
+            <view wx:elif="{{gradesUpdatedAtText && !gradesLoading}}" class="updated-at-hint">
+              最近更新 · {{gradesUpdatedAtText}}
+            </view>
+            <view wx:elif="{{gradesRefreshHint && !gradesLoading}}" class="updated-at-hint">
+              {{gradesRefreshHint}}
+            </view>
             <view wx:if="{{gradesLoading}}" class="skeleton-list">
               <view class="skeleton-summary-item" wx:for="{{2}}" wx:key="*this"></view>
               <view class="skeleton-list-item" wx:for="{{3}}" wx:key="*this"></view>
@@ -130,6 +176,15 @@
         </view>
         <view class="expanded-wrapper {{showECard ? 'show' : ''}}">
           <view class="expanded-content">
+            <view wx:if="{{ecardRefreshing}}" class="updated-at-hint updated-at-loading">
+              <text>刷新中...</text>
+            </view>
+            <view wx:elif="{{ecardUpdatedAtText && !ecardLoading}}" class="updated-at-hint">
+              最近更新 · {{ecardUpdatedAtText}}
+            </view>
+            <view wx:elif="{{ecardRefreshHint && !ecardLoading}}" class="updated-at-hint">
+              {{ecardRefreshHint}}
+            </view>
             <view wx:if="{{ecardLoading}}" class="skeleton-ecard">
               <view class="skeleton-label"></view>
               <view class="skeleton-balance"></view>

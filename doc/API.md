@@ -336,6 +336,45 @@ Authorization: Bearer eyJ...
 
 ---
 
+### GET /api/public/announcements
+
+获取系统公告列表。
+
+> 公告接口为公开访问，无需 Bearer Token。
+
+#### 参数
+
+无。
+
+#### 请求示例
+
+```
+GET /api/public/announcements
+```
+
+#### 响应
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "20260307-1",
+      "title": "系统维护通知",
+      "content": "今晚 23:00-23:30 进行例行维护",
+      "date": "2026-03-07",
+      "type": "info"
+    }
+  ]
+}
+```
+
+`type` 取值：`info | warning | error`。
+
+若公告模块未启用，接口可能返回 `404`。
+
+---
+
 ### GET /health
 
 健康检查，无需认证。
@@ -376,3 +415,4 @@ Authorization: Bearer eyJ...
 | /api/grades | 教务系统 (JW) | jw_session |
 | /api/ecard | 统一门户 (Portal) | portal_jwt |
 | /api/user | 统一门户 (Portal) | portal_jwt |
+| /api/public/announcements | 服务端公告模块 | public |

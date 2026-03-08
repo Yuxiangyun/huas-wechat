@@ -1,7 +1,69 @@
-import { api, PublicAnnouncement } from '../../utils/api';
-import { storage } from '../../utils/storage';
+import { api, PublicAnnouncement, UserInfo } from '../../utils/api';
+import { storage, setStorageWithAutoCleanup } from '../../utils/storage';
 
 const ANNOUNCEMENT_READ_IDS_KEY = 'announcement_read_ids';
+const CAPTCHA_REQUIRED_MSG = '学校系统要求补充验证码。这通常是密码或学号输错后触发，请先核对密码，再输入验证码登录。';
+const AUTO_LOGIN_CAPTCHA_REQUIRED_MSG = '自动登录未通过，学校系统要求补充验证码。请核对密码后，输入验证码手动登录。';
+const CREDENTIAL_ERROR_MSG = '学号或密码错误，请核对后重新登录。';
+const CREDENTIAL_ERROR_WITH_CAPTCHA_MSG = '学号或密码可能不正确。请先核对密码，再填写验证码登录。';
+const AUTO_LOGIN_CREDENTIAL_ERROR_MSG = '自动登录失败，保存的账号或密码可能已失效，请核对后手动登录。';
+const SESSION_EXPIRED_MSG = '凭证过期，请重新登录～';
+
+function isCredentialError(msg?: string): boolean {
+  const normalizedMsg = (msg || '').trim();
+
+  return (
+    normalizedMsg.includes('密码错误') ||
+    normalizedMsg.includes('用户名或者密码有误') ||
+    normalizedMsg.includes('用户名或密码有误') ||
+    normalizedMsg.includes('账号或密码有误') ||
+    normalizedMsg.includes('账号密码错误') ||
+    (normalizedMsg.includes('账号') && normalizedMsg.includes('密码')) ||
+    (normalizedMsg.includes('学号') && normalizedMsg.includes('密码'))
+  );
+}
+
+function isGenericCaptchaPrompt(msg?: string): boolean {
+  const normalizedMsg = (msg || '').trim();
+  return !normalizedMsg || normalizedMsg === '需要验证码' || normalizedMsg === '请输入验证码后重试';
+}
+
+function getCaptchaGuidance(msg?: string, mode: 'auto' | 'manual' = 'manual'): string {
+  const normalizedMsg = (msg || '').trim();
+
+  if (normalizedMsg.includes('验证码错误')) {
+    return '验证码错误，请核对密码后重新输入图中验证码。';
+  }
+
+  if (isGenericCaptchaPrompt(normalizedMsg)) {
+    return mode === 'auto' ? AUTO_LOGIN_CAPTCHA_REQUIRED_MSG : CAPTCHA_REQUIRED_MSG;
+  }
+
+  return normalizedMsg;
+}
+
+function getLoginErrorGuidance(
+  msg?: string,
+  options: { mode?: 'auto' | 'manual'; showCaptcha?: boolean } = {},
+): string {
+  const { mode = 'manual', showCaptcha = false } = options;
+  const normalizedMsg = (msg || '').trim();
+
+  if (normalizedMsg.includes('验证码错误') || isGenericCaptchaPrompt(normalizedMsg)) {
+    return getCaptchaGuidance(normalizedMsg, mode);
+  }
+
+  if (isCredentialError(normalizedMsg)) {
+    if (mode === 'auto') return AUTO_LOGIN_CREDENTIAL_ERROR_MSG;
+    return showCaptcha ? CREDENTIAL_ERROR_WITH_CAPTCHA_MSG : CREDENTIAL_ERROR_MSG;
+  }
+
+  if (!normalizedMsg) {
+    return mode === 'auto' ? '自动登录失败，请手动登录。' : '登录失败，请稍后重试。';
+  }
+
+  return normalizedMsg;
+}
 
 Page({
   data: {
@@ -25,7 +87,10 @@ Page({
   onLoad(options: { logout?: string; sessionExpired?: string } = {}): void {
     const isLogoutStatus = options.logout === 'true' || options.sessionExpired === 'true';
     if (isLogoutStatus) {
-      this.setData({ isLogout: true });
+      this.setData({
+        isLogout: true,
+        errorMsg: options.sessionExpired === 'true' ? SESSION_EXPIRED_MSG : '',
+      });
     }
 
     this.loadSavedCredentials();
@@ -52,8 +117,12 @@ Page({
       this.tryAutoLogin(credentials.username, credentials.password);
     }
 
+    this.setData({
+      isLogout: false,
+      showAnnouncementDot: false,
+    });
+
     this.checkAnnouncementUnread();
-    this.setData({ isLogout: false });
   },
 
   loadSavedCredentials(): void {
@@ -84,7 +153,7 @@ Page({
 
     if (res.code === 200 && res.data) {
       this.setData({ autoLoginTip: '' });
-      this.onLoginSuccess(res.data.token, username, password);
+      this.onLoginSuccess(res.data.token, username, password, res.data.user);
       return;
     }
 
@@ -95,12 +164,12 @@ Page({
         showCaptcha: true,
         sessionId: res.sessionId || '',
         captchaImage: res.captchaImage ? `data:image/png;base64,${res.captchaImage}` : '',
-        errorMsg: '需要验证码，请手动完成登录',
+        errorMsg: getCaptchaGuidance(res.msg, 'auto'),
       });
       return;
     }
 
-    const displayMsg = res.msg || '自动登录失败，请手动登录';
+    const displayMsg = getLoginErrorGuidance(res.msg, { mode: 'auto' });
     this.setData({
       loading: false,
       autoLoginTip: '',
@@ -108,7 +177,7 @@ Page({
     });
   },
 
-  onLoginSuccess(token: string, username: string, password: string): void {
+  onLoginSuccess(token: string, username: string, password: string, user?: UserInfo): void {
     this.setData({ loading: false });
 
     const lastLoginUsername = storage.getLastLoginUsername();
@@ -119,6 +188,9 @@ Page({
 
     storage.saveToken(token);
     storage.saveLastLoginUsername(username);
+    if (user) {
+      storage.saveUserInfo(user);
+    }
 
     if (this.data.rememberPassword) {
       storage.saveCredentials(username, password);
@@ -170,28 +242,35 @@ Page({
   },
 
   async checkAnnouncementUnread(): Promise<void> {
-    const res = await api.getPublicAnnouncements();
-    if (res.code !== 200 || !Array.isArray(res.data)) return;
-
-    const readIds: string[] = wx.getStorageSync(ANNOUNCEMENT_READ_IDS_KEY) || [];
-    const hasUnread = res.data.some((item: PublicAnnouncement) => !readIds.includes(String(item.id)));
-    this.setData({ showAnnouncementDot: hasUnread });
+    try {
+      const res = await api.getPublicAnnouncements();
+      if ((res.code === 0 || res.code === 200) && Array.isArray(res.data)) {
+        const readIds: string[] = wx.getStorageSync(ANNOUNCEMENT_READ_IDS_KEY) || [];
+        const hasUnread = res.data.some((item: PublicAnnouncement) => !readIds.includes(String(item.id)));
+        this.setData({ showAnnouncementDot: hasUnread });
+      }
+    } catch {
+      // 静默失败，不影响登录流程。
+    }
   },
 
   async showAnnouncements(): Promise<void> {
     this.setData({ showAnnouncementsModal: true });
-    wx.showLoading({ title: '加载中...' });
-
-    const res = await api.getPublicAnnouncements();
-    if (res.code === 200 && Array.isArray(res.data)) {
-      const readIds = res.data.map((item: PublicAnnouncement) => String(item.id));
-      wx.setStorageSync(ANNOUNCEMENT_READ_IDS_KEY, readIds);
-      this.setData({ announcements: res.data, showAnnouncementDot: false });
-    } else {
-      wx.showToast({ title: res.msg || '获取公告失败', icon: 'none' });
+    try {
+      wx.showLoading({ title: '加载中...' });
+      const res = await api.getPublicAnnouncements();
+      if ((res.code === 0 || res.code === 200) && Array.isArray(res.data)) {
+        const readIds = res.data.map((item: PublicAnnouncement) => String(item.id));
+        setStorageWithAutoCleanup(ANNOUNCEMENT_READ_IDS_KEY, readIds);
+        this.setData({ announcements: res.data, showAnnouncementDot: false });
+      } else {
+        wx.showToast({ title: res.msg || '获取公告失败', icon: 'none' });
+      }
+    } catch (err: any) {
+      console.error('获取公告失败:', err);
+    } finally {
+      wx.hideLoading();
     }
-
-    wx.hideLoading();
   },
 
   hideAnnouncements(): void {
@@ -235,14 +314,14 @@ Page({
       this.setData({
         sessionId: res.sessionId || '',
         captchaImage: res.captchaImage ? `data:image/png;base64,${res.captchaImage}` : '',
-        errorMsg: '请输入验证码后登录',
+        errorMsg: getCaptchaGuidance(res.msg),
         captchaLoading: false,
       });
       return;
     }
 
     this.setData({
-      errorMsg: res.msg || '刷新验证码失败',
+      errorMsg: getLoginErrorGuidance(res.msg, { showCaptcha: this.data.showCaptcha }),
       captchaLoading: false,
     });
   },
@@ -280,7 +359,7 @@ Page({
     });
 
     if (res.code === 200 && res.data) {
-      this.onLoginSuccess(res.data.token, cleanUsername, cleanPassword);
+      this.onLoginSuccess(res.data.token, cleanUsername, cleanPassword, res.data.user);
       return;
     }
 
@@ -291,14 +370,14 @@ Page({
         sessionId: res.sessionId || this.data.sessionId,
         captchaImage: res.captchaImage ? `data:image/png;base64,${res.captchaImage}` : this.data.captchaImage,
         captcha: '',
-        errorMsg: res.msg || '请输入验证码后重试',
+        errorMsg: getCaptchaGuidance(res.msg),
       });
       return;
     }
 
     this.setData({
       loading: false,
-      errorMsg: res.msg || '登录失败',
+      errorMsg: getLoginErrorGuidance(res.msg, { showCaptcha }),
     });
   },
 

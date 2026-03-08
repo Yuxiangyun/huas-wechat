@@ -86,6 +86,7 @@ miniprogram/
 认证与会话：
 - `POST /auth/login` 获取 JWT，JWT 有效期 90 天。
 - 除 `/auth/login`、`/health` 外，全部 `/api/*` 需要 `Authorization: Bearer <token>`。
+- `/api/public/announcements` 为公开接口，未登录也可访问。
 - 收到 `4001`：清理本地 token 并回到登录页。
 - `3003` 代表服务端凭证恢复失败，需要用户重新登录。
 
@@ -112,7 +113,7 @@ miniprogram/
 - `user.service`：用户资料查询与会话信息同步。
 
 页面职责建议：
-- `pages/login`：账号输入、验证码弹层、登录态恢复提示。
+- `pages/login`：账号输入、验证码弹层、登录态恢复提示、公告查看入口。
 - `pages/index`：课表主视图、周导航、课程详情弹窗、公告入口。
 - `pages/more`：成绩/一卡通/自定义课程配置与弹窗编辑。
 - `pages/about`：信息展示与外链入口。

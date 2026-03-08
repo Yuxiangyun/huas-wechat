@@ -49,7 +49,7 @@ page {
   right: -8rpx;
   bottom: 8rpx;
   height: 28rpx;
-  background: #D2FF72;
+  background: var(--theme-accent, #D2FF72);
   z-index: -1;
   border-radius: 8rpx;
 }
@@ -162,8 +162,8 @@ page {
 /* 胶囊标签 (Pill Shape) */
 .list-row-tag {
   flex-shrink: 0;
-  background: #D2FF72;
-  color: #111111;
+  background: var(--theme-accent, #D2FF72);
+  color: var(--theme-accent-ink, #111111);
   font-size: 22rpx;
   font-weight: 700;
   padding: 10rpx 24rpx;

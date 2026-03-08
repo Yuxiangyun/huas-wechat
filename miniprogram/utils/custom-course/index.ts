@@ -1,3 +1,5 @@
+import { setStorageWithAutoCleanup } from '../storage';
+
 export interface CustomCourse {
   customId: string;
   name: string;
@@ -61,7 +63,10 @@ function readAll(): CustomCourse[] {
 }
 
 function writeAll(courses: CustomCourse[]): void {
-  wx.setStorageSync(KEY, courses);
+  const success = setStorageWithAutoCleanup(KEY, courses);
+  if (!success) {
+    console.warn('[Storage] 自定义课程写入失败');
+  }
 }
 
 function buildCustomId(): string {

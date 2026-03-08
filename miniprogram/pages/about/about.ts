@@ -1,3 +1,7 @@
+import { storage } from '../../utils/storage';
+import { DEFAULT_SCHEDULE_THEME_KEY, getScheduleThemeByKey, type ScheduleThemeKey, type ScheduleTheme } from '../../utils/theme';
+import { getBeijingHour } from '../../utils/util';
+
 function setSelectedTab(page: WechatMiniprogram.Page.Instance<any, any>, selected: number): void {
   const getter = (page as WechatMiniprogram.Page.Instance<any, any> & {
     getTabBar?: ((cb?: (tabBar: WechatMiniprogram.Component.TrivialInstance) => void) => WechatMiniprogram.Component.TrivialInstance | undefined);
@@ -19,8 +23,14 @@ function setSelectedTab(page: WechatMiniprogram.Page.Instance<any, any>, selecte
   }
 }
 
+function buildThemeStyle(theme: ScheduleTheme): string {
+  return `--theme-accent:${theme.accent};--theme-accent-soft:${theme.accentSoft};--theme-accent-ink:${theme.accentInk};`;
+}
+
 Page({
   data: {
+    currentScheduleThemeKey: DEFAULT_SCHEDULE_THEME_KEY as ScheduleThemeKey,
+    themeStyle: buildThemeStyle(getScheduleThemeByKey(DEFAULT_SCHEDULE_THEME_KEY)),
     greetingText: '',
     copyTagText: '复制',
     features: [
@@ -37,11 +47,20 @@ Page({
 
   onShow() {
     setSelectedTab(this, 2);
+    this.loadScheduleTheme();
     this.setGreeting();
   },
 
+  loadScheduleTheme() {
+    const theme = getScheduleThemeByKey(storage.getScheduleTheme());
+    this.setData({
+      currentScheduleThemeKey: theme.key,
+      themeStyle: buildThemeStyle(theme),
+    });
+  },
+
   setGreeting() {
-    const hour = new Date().getHours();
+    const hour = getBeijingHour();
     let greeting = '';
 
     if (hour >= 0 && hour < 6) {

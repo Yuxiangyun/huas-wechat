@@ -1,8 +1,9 @@
 // pages/more/more.ts - 更多页面
 import { api, UserInfo, ECardInfo, GradeList, GradeItem } from '../../utils/api';
-import { storage } from '../../utils/storage';
+import { storage, setStorageWithAutoCleanup } from '../../utils/storage';
 import { customCourseStorage, formatWeeks } from '../../utils/custom-course/index';
-import { triggerLightHaptic } from '../../utils/util';
+import { DEFAULT_SCHEDULE_THEME_KEY, SCHEDULE_THEME_OPTIONS, getScheduleThemeByKey, type ScheduleTheme } from '../../utils/theme';
+import { resolveUpdatedAtText, triggerLightHaptic } from '../../utils/util';
 import type { CustomCourse } from '../../utils/custom-course/index';
 
 interface TermGrades {
@@ -30,10 +31,12 @@ interface GroupedCustomCourse {
 interface TimedCache<T> {
     timestamp: number;
     data: T;
+    updatedAtText?: string;
 }
 
 const GRADES_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const ECARD_CACHE_TTL_MS = 5 * 60 * 1000;
+const DEFAULT_SCHEDULE_THEME = getScheduleThemeByKey(DEFAULT_SCHEDULE_THEME_KEY);
 
 function setSelectedTab(page: WechatMiniprogram.Page.Instance<any, any>, selected: number): void {
     const getter = (page as WechatMiniprogram.Page.Instance<any, any> & {
@@ -63,7 +66,7 @@ function showApiErrorToast(msg: string | undefined, fallback: string): void {
     });
 }
 
-function readTimedCache<T>(key: string, ttlMs: number): T | null {
+function readTimedCache<T>(key: string, ttlMs: number): TimedCache<T> | null {
     try {
         const raw = wx.getStorageSync(key) as TimedCache<T> | Record<string, unknown> | '' | undefined;
         if (!raw || typeof raw !== 'object') {
@@ -81,18 +84,22 @@ function readTimedCache<T>(key: string, ttlMs: number): T | null {
             return null;
         }
 
-        return timed.data as T;
+        return {
+            timestamp: timed.timestamp,
+            data: timed.data as T,
+            updatedAtText: typeof timed.updatedAtText === 'string' ? timed.updatedAtText : undefined,
+        };
     } catch {
         return null;
     }
 }
 
-function writeTimedCache<T>(key: string, data: T): void {
-    try {
-        wx.setStorageSync(key, { timestamp: Date.now(), data } as TimedCache<T>);
-    } catch {
-        // 忽略写入异常，保持功能可用
-    }
+function writeTimedCache<T>(key: string, data: T, updatedAtText?: string): void {
+    setStorageWithAutoCleanup(key, { timestamp: Date.now(), data, updatedAtText } as TimedCache<T>);
+}
+
+function buildThemeStyle(theme: ScheduleTheme): string {
+    return `--theme-accent:${theme.accent};--theme-accent-soft:${theme.accentSoft};--theme-accent-ink:${theme.accentInk};`;
 }
 
 Page({
@@ -103,8 +110,14 @@ Page({
         grades: null as GradeList | null,
         gradesByTerm: [] as TermGrades[],
         ecard: null as ECardInfo | null,
+        gradesUpdatedAtText: '',
+        ecardUpdatedAtText: '',
+        gradesRefreshHint: '',
+        ecardRefreshHint: '',
         gradesLoading: false,
         ecardLoading: false,
+        gradesRefreshing: false,
+        ecardRefreshing: false,
 
         showCustomCourses: false,
         customCourses: [] as DisplayCustomCourse[],
@@ -119,6 +132,12 @@ Page({
         formWeeks: {} as Record<number, boolean>,
         dayOptions: DAY_OPTIONS,
         sectionNumbers: SECTION_NUMBERS,
+
+        scheduleThemeOptions: SCHEDULE_THEME_OPTIONS,
+        currentScheduleThemeKey: DEFAULT_SCHEDULE_THEME_KEY,
+        currentScheduleThemeName: DEFAULT_SCHEDULE_THEME.name,
+        themeStyle: buildThemeStyle(DEFAULT_SCHEDULE_THEME),
+        showScheduleThemes: false,
     },
 
     onShow() {
@@ -131,6 +150,7 @@ Page({
 
         this.fetchUserInfo();
         this.loadCustomCourses();
+        this.loadScheduleTheme();
     },
 
     async fetchUserInfo(forceRefresh = false) {
@@ -181,12 +201,25 @@ Page({
                 const cachedGradesByTerm = readTimedCache<TermGrades[]>('cache_grades_by_term', GRADES_CACHE_TTL_MS);
                 if (cachedGrades && cachedGradesByTerm) {
                     console.log('✅ [Cache] 成绩：命中本地缓存（6小时）');
-                    this.setData({ grades: cachedGrades, gradesByTerm: cachedGradesByTerm, gradesLoading: false });
+                    const nextData: Record<string, unknown> = {
+                        grades: cachedGrades.data,
+                        gradesByTerm: cachedGradesByTerm.data,
+                        gradesLoading: false,
+                        gradesRefreshing: false,
+                        gradesRefreshHint: '',
+                    };
+                    if (cachedGrades.updatedAtText) {
+                        nextData.gradesUpdatedAtText = cachedGrades.updatedAtText;
+                    } else {
+                        nextData.gradesUpdatedAtText = '';
+                    }
+                    this.setData(nextData);
                     return;
                 }
             }
 
             console.log('🌐 [Network] 获取成绩数据...');
+            this.setData({ gradesRefreshing: true, gradesRefreshHint: '' });
             const res = await api.getGrades({ refresh: forceRefresh });
             if ((res.code === 0 || res.code === 200) && res.data) {
                 const grades = res.data;
@@ -202,18 +235,25 @@ Page({
                     .sort((a, b) => b.localeCompare(a))
                     .map(term => ({ term, items: termMap[term] }));
 
-                this.setData({ grades, gradesByTerm });
-                writeTimedCache('cache_grades', grades);
-                writeTimedCache('cache_grades_by_term', gradesByTerm);
+                const gradesUpdatedAtText = resolveUpdatedAtText(res.meta?.updated_at);
+                const nextData: Record<string, unknown> = {
+                    grades,
+                    gradesByTerm,
+                    gradesUpdatedAtText: gradesUpdatedAtText || '',
+                    gradesRefreshHint: gradesUpdatedAtText ? '' : '已更新',
+                };
+                this.setData(nextData);
+                writeTimedCache('cache_grades', grades, gradesUpdatedAtText);
+                writeTimedCache('cache_grades_by_term', gradesByTerm, gradesUpdatedAtText);
             } else {
-                this.setData({ grades: null, gradesByTerm: [] });
+                this.setData({ grades: null, gradesByTerm: [], gradesUpdatedAtText: '', gradesRefreshHint: '' });
                 showApiErrorToast(res.msg, '获取成绩失败');
             }
         } catch (err: any) {
-            this.setData({ grades: null, gradesByTerm: [] });
+            this.setData({ grades: null, gradesByTerm: [], gradesUpdatedAtText: '', gradesRefreshHint: '' });
             showApiErrorToast(err?.msg, '获取成绩失败');
         } finally {
-            this.setData({ gradesLoading: false });
+            this.setData({ gradesLoading: false, gradesRefreshing: false });
         }
     },
 
@@ -239,25 +279,43 @@ Page({
                 const cachedECard = readTimedCache<ECardInfo>('cache_ecard', ECARD_CACHE_TTL_MS);
                 if (cachedECard) {
                     console.log('✅ [Cache] 一卡通：命中本地缓存（5分钟）');
-                    this.setData({ ecard: cachedECard, ecardLoading: false });
+                    const nextData: Record<string, unknown> = {
+                        ecard: cachedECard.data,
+                        ecardLoading: false,
+                        ecardRefreshing: false,
+                        ecardRefreshHint: '',
+                    };
+                    if (cachedECard.updatedAtText) {
+                        nextData.ecardUpdatedAtText = cachedECard.updatedAtText;
+                    } else {
+                        nextData.ecardUpdatedAtText = '';
+                    }
+                    this.setData(nextData);
                     return;
                 }
             }
 
             console.log('🌐 [Network] 获取一卡通数据...');
+            this.setData({ ecardRefreshing: true, ecardRefreshHint: '' });
             const res = await api.getECard(forceRefresh);
             if ((res.code === 0 || res.code === 200) && res.data) {
-                this.setData({ ecard: res.data });
-                writeTimedCache('cache_ecard', res.data);
+                const ecardUpdatedAtText = resolveUpdatedAtText(res.meta?.updated_at);
+                const nextData: Record<string, unknown> = {
+                    ecard: res.data,
+                    ecardUpdatedAtText: ecardUpdatedAtText || '',
+                    ecardRefreshHint: ecardUpdatedAtText ? '' : '已更新',
+                };
+                this.setData(nextData);
+                writeTimedCache('cache_ecard', res.data, ecardUpdatedAtText);
             } else {
-                this.setData({ ecard: null });
+                this.setData({ ecard: null, ecardUpdatedAtText: '', ecardRefreshHint: '' });
                 showApiErrorToast(res.msg, '获取一卡通失败');
             }
         } catch (err: any) {
-            this.setData({ ecard: null });
+            this.setData({ ecard: null, ecardUpdatedAtText: '', ecardRefreshHint: '' });
             showApiErrorToast(err?.msg, '获取一卡通失败');
         } finally {
-            this.setData({ ecardLoading: false });
+            this.setData({ ecardLoading: false, ecardRefreshing: false });
         }
     },
 
@@ -284,6 +342,38 @@ Page({
     toggleCustomCourses() {
         triggerLightHaptic();
         this.setData({ showCustomCourses: !this.data.showCustomCourses });
+    },
+
+    loadScheduleTheme() {
+        const theme = getScheduleThemeByKey(storage.getScheduleTheme());
+        this.setData({
+            currentScheduleThemeKey: theme.key,
+            currentScheduleThemeName: theme.name,
+            themeStyle: buildThemeStyle(theme),
+        });
+    },
+
+    toggleScheduleThemes() {
+        triggerLightHaptic();
+        this.setData({ showScheduleThemes: !this.data.showScheduleThemes });
+    },
+
+    onScheduleThemeSelect(e: WechatMiniprogram.TouchEvent) {
+        triggerLightHaptic();
+        const key = e.currentTarget.dataset.key as string | undefined;
+        const theme = getScheduleThemeByKey(key);
+
+        if (theme.key === this.data.currentScheduleThemeKey) {
+            return;
+        }
+
+        storage.saveScheduleTheme(theme.key);
+        this.setData({
+            currentScheduleThemeKey: theme.key,
+            currentScheduleThemeName: theme.name,
+            themeStyle: buildThemeStyle(theme),
+        });
+        wx.showToast({ title: `已切换为${theme.name}`, icon: 'none' });
     },
 
     showAddModal() {
@@ -482,10 +572,16 @@ Page({
                         grades: null,
                         gradesByTerm: [],
                         ecard: null,
+                        gradesUpdatedAtText: '',
+                        ecardUpdatedAtText: '',
+                        gradesRefreshHint: '',
+                        ecardRefreshHint: '',
                         showGrades: false,
                         showECard: false,
                         gradesLoading: false,
                         ecardLoading: false,
+                        gradesRefreshing: false,
+                        ecardRefreshing: false,
                     });
                     this.loadCustomCourses();
                     wx.showToast({ title: '缓存已清除', icon: 'success' });
@@ -499,7 +595,11 @@ Page({
             title: '提示', content: '确定要退出登录吗？',
             success: (res) => {
                 if (res.confirm) {
-                    storage.clearAll();
+                    storage.clearToken();
+                    storage.removeUserInfo();
+                    const app = getApp<IAppOption>();
+                    app.globalData.token = '';
+                    app.globalData.isLoggedIn = false;
                     wx.showToast({ title: '已退出登录', icon: 'success', duration: 1500 });
                     setTimeout(() => { wx.reLaunch({ url: '/pages/login/login?logout=true' }); }, 1500);
                 }

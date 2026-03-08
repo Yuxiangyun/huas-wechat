@@ -1,2 +1,1 @@
-export const API_BASE_URL = 'http://10.32.245.18:3000/';
-
+export const API_BASE_URL = 'https://api.huas-api.top/';

@@ -1,8 +1,9 @@
 // pages/index/index.ts - 课程表首页
 import { api, Course, PublicAnnouncement } from '../../utils/api';
-import { storage } from '../../utils/storage';
+import { storage, setStorageWithAutoCleanup } from '../../utils/storage';
 import { customCourseStorage, parseWeekNum, formatWeeks } from '../../utils/custom-course/index';
-import { triggerLightHaptic } from '../../utils/util';
+import { DEFAULT_SCHEDULE_THEME_KEY, getScheduleThemeByKey, type ScheduleTheme } from '../../utils/theme';
+import { getBeijingNow, resolveUpdatedAtText, triggerLightHaptic } from '../../utils/util';
 
 interface DisplayCourse extends Course {
   id: string;
@@ -67,6 +68,14 @@ function formatDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+function formatBeijingToday(): string {
+  const now = getBeijingNow();
+  const year = now.getUTCFullYear();
+  const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(now.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function getMonday(date: Date): Date {
   const d = new Date(date);
   const day = d.getDay() || 7;
@@ -92,6 +101,10 @@ function formatRemainText(remainMinutes: number): string {
   return `${remainMinutes}分`;
 }
 
+function buildThemeStyle(theme: ScheduleTheme): string {
+  return `--theme-accent:${theme.accent};--theme-accent-soft:${theme.accentSoft};--theme-accent-ink:${theme.accentInk};`;
+}
+
 Page({
   data: {
     dataSources: ['默认', '备用'],
@@ -101,11 +114,11 @@ Page({
     selectedDate: '',
     days: [] as { name: string; date: string; isToday: boolean }[],
     sections: [
-      { num: '1-2', start: '08:00' },
-      { num: '3-4', start: '10:00' },
-      { num: '5-6', start: '14:30' },
-      { num: '7-8', start: '16:30' },
-      { num: '9-10', start: '19:00' },
+      { num: '1-2', start: '08:00', end: '09:40' },
+      { num: '3-4', start: '10:00', end: '11:40' },
+      { num: '5-6', start: '14:30', end: '16:10' },
+      { num: '7-8', start: '16:30', end: '18:10' },
+      { num: '9-10', start: '19:00', end: '20:40' },
     ],
     courses: [] as DisplayCourse[],
     allCourses: [] as Course[],
@@ -117,19 +130,25 @@ Page({
     announcements: [] as PublicAnnouncement[],
     isCurrentWeek: true,
     scheduleMessage: '',
+    scheduleUpdatedAtText: '',
+    scheduleRefreshHint: '',
+    scheduleRefreshing: false,
     showWeekend: true,
     currentTimeLineTop: null as number | null,
     todayDayOfWeek: 1,
     timeLineCountdown: '',
+    currentScheduleThemeKey: DEFAULT_SCHEDULE_THEME_KEY,
+    themeStyle: buildThemeStyle(getScheduleThemeByKey(DEFAULT_SCHEDULE_THEME_KEY)),
     // 新增：动态计算的高度数据
     sectionHeight: 180,
     periodHeight: 90
   },
 
   onLoad() {
-    const today = formatDate(new Date());
+    const today = formatBeijingToday();
     this.setData({ selectedDate: today });
     this.calculateLayout(); // 初始化时计算自适应高度
+    this.applyScheduleTheme();
   },
 
   onShow() {
@@ -139,6 +158,7 @@ Page({
       return;
     }
 
+    this.applyScheduleTheme();
     this.updateDateInfo();
 
     const scheduleCacheCleared = storage.consumeScheduleCacheCleared();
@@ -156,14 +176,39 @@ Page({
   onHide() { this.stopTimeLineTimer(); },
   onUnload() { this.stopTimeLineTimer(); },
 
+  applyScheduleTheme() {
+    const theme = getScheduleThemeByKey(storage.getScheduleTheme());
+    const themeStyle = buildThemeStyle(theme);
+    const themeChanged = this.data.currentScheduleThemeKey !== theme.key;
+
+    this.setData(
+      {
+        currentScheduleThemeKey: theme.key,
+        themeStyle,
+      },
+      () => {
+        if (themeChanged && this.data.courses.length > 0) {
+          this.processCourses();
+        }
+      },
+    );
+  },
+
   // 计算屏幕剩余高度并均分给5节课
   calculateLayout() {
     try {
-      const sysInfo = wx.getSystemInfoSync();
-      const rpxRatio = 750 / sysInfo.windowWidth;
-      const windowHeightRpx = sysInfo.windowHeight * rpxRatio;
-      const safeAreaBottomPx = sysInfo.safeArea
-        ? Math.max(0, sysInfo.screenHeight - sysInfo.safeArea.bottom)
+      const wxAny = wx as any;
+      const useWindowInfo = typeof wxAny.getWindowInfo === 'function';
+      const info = useWindowInfo ? wxAny.getWindowInfo() : wx.getSystemInfoSync();
+      const windowWidth = info.windowWidth;
+      const windowHeight = info.windowHeight;
+      const screenHeight = info.screenHeight;
+      const safeAreaBottom = info.safeArea ? info.safeArea.bottom : undefined;
+
+      const rpxRatio = 750 / windowWidth;
+      const windowHeightRpx = windowHeight * rpxRatio;
+      const safeAreaBottomPx = typeof safeAreaBottom === 'number'
+        ? Math.max(0, screenHeight - safeAreaBottom)
         : 0;
       const safeAreaBottomRpx = safeAreaBottomPx * rpxRatio;
 
@@ -200,10 +245,10 @@ Page({
       this.setData({ currentTimeLineTop: null });
       return;
     }
-    const now = new Date();
-    const todayDayOfWeek = now.getDay() || 7;
-    const hour = now.getHours();
-    const minute = now.getMinutes();
+    const now = getBeijingNow();
+    const todayDayOfWeek = now.getUTCDay() || 7;
+    const hour = now.getUTCHours();
+    const minute = now.getUTCMinutes();
     const totalMinutes = hour * 60 + minute;
     const sh = this.data.sectionHeight; // 获取动态的大节高度
 
@@ -248,9 +293,8 @@ Page({
     const selectedDateStr = dateStr || this.data.selectedDate;
     const selectedDate = new Date(selectedDateStr.replace(/-/g, '/'));
     const monday = getMonday(selectedDate);
-    const today = new Date();
-    const todayStr = formatDate(today);
-    const todayMonday = getMonday(today);
+    const todayStr = formatBeijingToday();
+    const todayMonday = getMonday(new Date(todayStr.replace(/-/g, '/')));
     const isCurrentWeek = monday.getTime() === todayMonday.getTime();
 
     const displayDate = `${monday.getMonth() + 1}/${monday.getDate()}`;
@@ -270,8 +314,11 @@ Page({
 
   async fetchSchedule(forceRefresh = false) {
     const { selectedDate, allCourses, currentDataSourceIndex } = this.data;
+    const previousUpdatedAtText = this.data.scheduleUpdatedAtText;
+    const previousRefreshHint = this.data.scheduleRefreshHint;
+    let shouldRestoreScheduleMeta = true;
     if (allCourses.length === 0) {
-      this.setData({ loading: true });
+      this.setData({ loading: true, scheduleUpdatedAtText: '', scheduleRefreshHint: '' });
     }
 
     const customCourseChanged = storage.consumeCustomCourseChanged();
@@ -305,24 +352,35 @@ Page({
       const cacheData = wx.getStorageSync(cacheKey);
 
       if (!forceRefresh && cacheData) {
-        const { timestamp, data } = cacheData;
+        const { timestamp, data, updatedAtText } = cacheData as {
+          timestamp: number;
+          data: { week?: string; courses?: Course[]; message?: string };
+          updatedAtText?: string;
+        };
         const ONE_DAY_MS = 24 * 60 * 60 * 1000;
         if (Date.now() - timestamp < ONE_DAY_MS) {
-          console.log(`✅ [Cache] 课程表(${selectedDate})：命中24小时本地缓存`);
-          this.setData({
-            currentWeek: currentDataSourceIndex === 1 ? '' : (data.week || '未知'),
-            allCourses: Array.isArray(data.courses) ? data.courses : [],
-            scheduleMessage: data.message || '',
-            loading: false
-          });
-          this.processCourses();
-          return;
+          if (typeof updatedAtText === 'string' && updatedAtText) {
+            console.log(`✅ [Cache] 课程表(${selectedDate})：命中24小时本地缓存`);
+            this.setData({
+              currentWeek: currentDataSourceIndex === 1 ? '' : (data.week || '未知'),
+              allCourses: Array.isArray(data.courses) ? data.courses : [],
+              scheduleMessage: data.message || '',
+              scheduleUpdatedAtText: updatedAtText,
+              scheduleRefreshHint: '',
+              loading: false
+            });
+            this.processCourses();
+            shouldRestoreScheduleMeta = false;
+            return;
+          }
+          console.log(`ℹ️ [Cache] 课程表(${selectedDate})：命中旧缓存但缺少更新时间，回源补齐`);
         } else {
           console.log(`⏳ [Cache] 课程表(${selectedDate})：缓存已过期，时长：${(Date.now() - timestamp) / 1000 / 60 / 60} 小时`);
         }
       }
 
       console.log(`🌐 [Network] 课程表(${selectedDate})：拉取新网路数据...`);
+      this.setData({ scheduleRefreshing: true, scheduleRefreshHint: '' });
       let res;
       if (currentDataSourceIndex === 1) {
         const selectedDateObj = new Date(selectedDate.replace(/-/g, '/'));
@@ -335,19 +393,28 @@ Page({
       }
 
       if ((res.code === 0 || res.code === 200) && res.data) {
+        const scheduleUpdatedAtText = resolveUpdatedAtText(res.meta?.updated_at);
         const dataToCache = {
           week: res.data.week,
           courses: res.data.courses,
           message: res.data.message
         };
-        wx.setStorageSync(cacheKey, { timestamp: Date.now(), data: dataToCache });
+        setStorageWithAutoCleanup(cacheKey, {
+          timestamp: Date.now(),
+          data: dataToCache,
+          ...(scheduleUpdatedAtText ? { updatedAtText: scheduleUpdatedAtText } : {}),
+        });
 
-        this.setData({
+        const nextData: Record<string, unknown> = {
           currentWeek: currentDataSourceIndex === 1 ? '' : (res.data.week || '未知'),
           allCourses: Array.isArray(res.data.courses) ? res.data.courses : [],
-          scheduleMessage: res.data.message || ''
-        });
+          scheduleMessage: res.data.message || '',
+          scheduleUpdatedAtText: scheduleUpdatedAtText || '',
+          scheduleRefreshHint: scheduleUpdatedAtText ? '' : '已更新',
+        };
+        this.setData(nextData);
         this.processCourses();
+        shouldRestoreScheduleMeta = false;
       } else {
         wx.showToast({ title: res.msg || '获取课表失败', icon: 'none' });
       }
@@ -355,7 +422,13 @@ Page({
       console.error('获取课程表失败:', err);
       wx.showToast({ title: err?.msg || '获取课表失败', icon: 'none' });
     } finally {
-      this.setData({ loading: false });
+      if (shouldRestoreScheduleMeta) {
+        this.setData({
+          scheduleUpdatedAtText: previousUpdatedAtText,
+          scheduleRefreshHint: previousRefreshHint,
+        });
+      }
+      this.setData({ loading: false, scheduleRefreshing: false });
     }
   },
 
@@ -375,6 +448,8 @@ Page({
       ...allCourses,
       ...customCourses.map(c => ({ ...c, weekStr: formatWeeks(c.weeks) })),
     ];
+    const theme = getScheduleThemeByKey(this.data.currentScheduleThemeKey);
+    const courseColors = theme.courseColors;
 
     const parsedCourses: DisplayCourse[] = mergedCourses.map((course) => {
       const sectionMatch = course.section.match(/(\d+)\s*[-~,，]?(\d+)?/);
@@ -420,13 +495,15 @@ Page({
       const topOffset = (c.exactStart % 2 === 0) ? periodHeight : 0;
       const widthPercent = 100 / c.conflictCount;
       const leftPercent = c.conflictIndex * widthPercent;
-      c.cardStyle = `height: ${height}rpx; top: ${topOffset}rpx; margin-top: 8rpx; width: calc(${widthPercent}% - 8rpx); left: calc(${leftPercent}% + 4rpx); z-index: ${5 + c.conflictIndex};`;
+      const color = courseColors[c.colorIndex % courseColors.length];
+      c.cardStyle = `height: ${height}rpx; top: ${topOffset}rpx; margin-top: 8rpx; width: calc(${widthPercent}% - 8rpx); left: calc(${leftPercent}% + 4rpx); z-index: ${5 + c.conflictIndex}; background: ${color.background}; border-left-color: ${color.border};`;
       return c;
     });
 
     let showWeekend = courses.some(c => c.day === 6 || c.day === 7);
     if (this.data.isCurrentWeek) {
-      const todayDay = new Date().getDay() || 7;
+      const now = getBeijingNow();
+      const todayDay = now.getUTCDay() || 7;
       if (todayDay === 6 || todayDay === 7) showWeekend = true;
     }
 
@@ -461,7 +538,7 @@ Page({
   goToCurrentWeek() {
     triggerLightHaptic();
     if (this.data.isCurrentWeek) return;
-    const today = formatDate(new Date());
+    const today = formatBeijingToday();
     this.setData({ selectedDate: today, allCourses: [] });
     this.updateDateInfo(today);
     this.fetchSchedule();
@@ -511,7 +588,7 @@ Page({
       const res = await api.getPublicAnnouncements();
       if ((res.code === 0 || res.code === 200) && Array.isArray(res.data)) {
         const readIds = res.data.map((item: PublicAnnouncement) => String(item.id));
-        wx.setStorageSync(ANNOUNCEMENT_READ_IDS_KEY, readIds);
+        setStorageWithAutoCleanup(ANNOUNCEMENT_READ_IDS_KEY, readIds);
         this.setData({ announcements: res.data, showAnnouncementDot: false });
       } else {
         wx.showToast({ title: res.msg || '获取公告失败', icon: 'none' });

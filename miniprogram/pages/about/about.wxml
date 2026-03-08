@@ -1,4 +1,4 @@
-<view class="about-container">
+<view class="about-container" style="{{themeStyle}}">
   <view class="hero-section">
     <view class="title-row">
       <text class="title-black">文理</text>

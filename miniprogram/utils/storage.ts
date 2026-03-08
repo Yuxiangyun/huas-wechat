@@ -11,6 +11,7 @@ const KEYS = {
   credentials: 'credentials',
   rememberPassword: 'remember_password',
   lastLoginUsername: 'last_login_username',
+  scheduleTheme: 'schedule_theme',
   customCourseChanged: 'custom_course_changed',
   scheduleCacheCleared: 'schedule_cache_cleared',
 } as const;
@@ -29,11 +30,94 @@ function getSafe<T>(key: string): T | null {
   }
 }
 
-function setSafe(key: string, value: unknown): void {
+function getErrorMessage(error: unknown): string {
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  if (error && typeof error === 'object') {
+    const withErrMsg = error as { errMsg?: unknown; message?: unknown };
+    if (typeof withErrMsg.errMsg === 'string') {
+      return withErrMsg.errMsg;
+    }
+    if (typeof withErrMsg.message === 'string') {
+      return withErrMsg.message;
+    }
+  }
+
+  return '';
+}
+
+function isStorageQuotaError(error: unknown): boolean {
+  const message = getErrorMessage(error).toLowerCase();
+  if (!message) return false;
+
+  return /quota|exceed|maximum|max size|storage|full|space|容量|空间|超出|上限|满/.test(message);
+}
+
+function removeCacheStorageKeys(): number {
+  try {
+    const info = wx.getStorageInfoSync();
+    const cacheKeys = info.keys.filter((key) => CACHE_PREFIXES.some((prefix) => key.startsWith(prefix)));
+
+    const sorted = cacheKeys
+      .map((key) => {
+        let timestamp = 0;
+        try {
+          const value = wx.getStorageSync(key) as { timestamp?: unknown } | '' | undefined;
+          if (value && typeof value === 'object' && typeof value.timestamp === 'number') {
+            timestamp = value.timestamp;
+          }
+        } catch {
+          // Ignore invalid cache data.
+        }
+        return { key, timestamp };
+      })
+      .sort((a, b) => a.timestamp - b.timestamp);
+
+    let removed = 0;
+    sorted.forEach(({ key }) => {
+      try {
+        wx.removeStorageSync(key);
+        removed += 1;
+      } catch {
+        // Ignore remove errors.
+      }
+    });
+
+    return removed;
+  } catch {
+    return 0;
+  }
+}
+
+export function setStorageWithAutoCleanup(key: string, value: unknown): boolean {
   try {
     wx.setStorageSync(key, value);
-  } catch {
-    // Ignore quota/write errors in helper layer.
+    return true;
+  } catch (error) {
+    if (!isStorageQuotaError(error)) {
+      return false;
+    }
+
+    const removed = removeCacheStorageKeys();
+    if (removed <= 0) {
+      return false;
+    }
+
+    try {
+      wx.setStorageSync(key, value);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
+function setSafe(key: string, value: unknown): void {
+  const success = setStorageWithAutoCleanup(key, value);
+  if (!success) {
+    console.warn(`[Storage] 写入失败：${key}`);
   }
 }
 
@@ -97,6 +181,14 @@ export const storage = {
     return username || '';
   },
 
+  saveScheduleTheme(themeKey: string): void {
+    setSafe(KEYS.scheduleTheme, themeKey);
+  },
+
+  getScheduleTheme(): string {
+    return getSafe<string>(KEYS.scheduleTheme) || '';
+  },
+
   markCustomCourseChanged(): void {
     setSafe(KEYS.customCourseChanged, true);
   },
@@ -122,17 +214,8 @@ export const storage = {
   },
 
   clearCacheKeepLogin(): void {
-    try {
-      const info = wx.getStorageInfoSync();
-      info.keys.forEach((key) => {
-        if (CACHE_PREFIXES.some((prefix) => key.startsWith(prefix))) {
-          wx.removeStorageSync(key);
-        }
-      });
-      this.markScheduleCacheCleared();
-    } catch {
-      // Ignore and keep app usable.
-    }
+    removeCacheStorageKeys();
+    this.markScheduleCacheCleared();
   },
 
   clearAll(): void {

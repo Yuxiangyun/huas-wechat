@@ -1,4 +1,4 @@
-<view class="schedule-container">
+<view class="schedule-container" style="{{themeStyle}}">
   <view class="hero-section">
     <view class="title-area">
       <view class="title-row">
@@ -16,6 +16,15 @@
             <text class="nav-arrow icon-down">▼</text>
           </view>
         </picker>
+      </view>
+      <view wx:if="{{scheduleRefreshing}}" class="subtitle-updated subtitle-updating">
+        <text>刷新中...</text>
+      </view>
+      <view wx:elif="{{scheduleUpdatedAtText}}" class="subtitle-updated">
+        最近更新 · {{scheduleUpdatedAtText}}
+      </view>
+      <view wx:elif="{{scheduleRefreshHint}}" class="subtitle-updated">
+        {{scheduleRefreshHint}}
       </view>
     </view>
     <view class="action-area">
@@ -61,6 +70,7 @@
         <view class="time-cell" style="height: {{sectionHeight}}rpx;">
           <text class="time-num">{{item.num}}</text>
           <text class="time-start">{{item.start}}</text>
+          <text class="time-end">{{item.end}}</text>
         </view>
         <view class="day-cell" wx:for="{{7}}" wx:for-index="dayIndex" wx:key="dayIndex" wx:if="{{showWeekend || dayIndex < 5}}" style="height: {{sectionHeight}}rpx;">
           <view wx:if="{{isCurrentWeek && sectionIndex === 0 && (dayIndex + 1) === todayDayOfWeek && currentTimeLineTop !== null}}" class="time-indicator" style="top: {{currentTimeLineTop}}rpx;">
@@ -79,8 +89,8 @@
       </view>
     </view>
   </scroll-view>
-  <view class="modal-mask" wx:if="{{showDetail}}" bindtap="hideDetail">
-    <view class="modal-content" catchtap="stopPropagation">
+  <view class="modal-mask" wx:if="{{showDetail}}" bindtap="hideDetail" catchtouchmove="stopPropagation">
+    <view class="modal-content" catchtap="stopPropagation" catchtouchmove="stopPropagation">
       <view class="modal-header">
         <text class="modal-title">课程详情</text>
         <view class="modal-close" bindtap="hideDetail">×</view>
@@ -113,15 +123,15 @@
       </view>
     </view>
   </view>
-  <view class="modal-mask" wx:if="{{showAnnouncementsModal}}" bindtap="hideAnnouncements">
-    <view class="modal-content" catchtap="stopPropagation">
-      <view class="modal-header">
-        <text class="modal-title">系统公告</text>
-        <view class="modal-close" bindtap="hideAnnouncements">×</view>
+  <view class="announcement-modal-mask" wx:if="{{showAnnouncementsModal}}" bindtap="hideAnnouncements" catchtouchmove="stopPropagation">
+    <view class="announcement-modal" catchtap="stopPropagation" catchtouchmove="stopPropagation">
+      <view class="announcement-modal-header">
+        <text class="announcement-modal-title">系统公告</text>
+        <view class="announcement-modal-close" bindtap="hideAnnouncements">×</view>
       </view>
-      <scroll-view scroll-y class="modal-body announcement-scroll">
-        <view wx:if="{{announcements.length === 0}}" class="empty-state">
-          <text class="empty-text">暂无公告</text>
+      <scroll-view scroll-y class="announcement-modal-scroll">
+        <view wx:if="{{announcements.length === 0}}" class="announcement-empty-state">
+          <text class="announcement-empty-text">暂无公告</text>
         </view>
         <view wx:else class="announcement-list">
           <view wx:for="{{announcements}}" wx:key="id" class="announcement-item type-{{item.type}}">

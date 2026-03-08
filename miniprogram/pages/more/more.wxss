@@ -47,7 +47,7 @@ page {
   right: -8rpx;
   bottom: 8rpx;
   height: 24rpx;
-  background: #D2FF72;
+  background: var(--theme-accent, #D2FF72);
   z-index: -1;
   border-radius: 8rpx;
 }
@@ -83,6 +83,106 @@ page {
   border-radius: 24rpx;
   border: 1rpx solid rgba(0, 0, 0, 0.04);
   overflow: hidden;
+}
+
+.theme-card {
+  padding: 24rpx;
+}
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
+}
+
+.theme-option {
+  border: 1rpx solid rgba(0, 0, 0, 0.06);
+  border-radius: 16rpx;
+  background: #FFFFFF;
+  padding: 18rpx 20rpx;
+  display: flex;
+  align-items: center;
+}
+
+.theme-option.selected {
+  border-color: var(--theme-accent, #D2FF72);
+  box-shadow: 0 8rpx 16rpx var(--theme-accent-soft, rgba(210, 255, 114, 0.24));
+}
+
+.theme-swatch {
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 50%;
+  margin-right: 14rpx;
+  flex-shrink: 0;
+  border: 1rpx solid rgba(0, 0, 0, 0.06);
+}
+
+.theme-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.theme-name {
+  display: block;
+  font-size: 24rpx;
+  color: #111111;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.theme-desc {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 20rpx;
+  color: #999999;
+  line-height: 1.2;
+}
+
+.theme-check {
+  margin-left: 10rpx;
+  color: var(--theme-accent-ink, #111111);
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.theme-entry-row {
+  background: linear-gradient(90deg, var(--theme-accent-soft, rgba(210, 255, 114, 0.24)) 0%, rgba(255, 255, 255, 0) 42%);
+}
+
+.theme-entry-actions {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  flex-shrink: 0;
+}
+
+.theme-entry-tag {
+  background: var(--theme-accent, #D2FF72);
+  color: var(--theme-accent-ink, #111111);
+  box-shadow: 0 8rpx 18rpx var(--theme-accent-soft, rgba(210, 255, 114, 0.24));
+  animation: themeBadgePulse 1.8s ease-in-out infinite;
+}
+
+.theme-expanded-content {
+  background: #FFFFFF;
+}
+
+@keyframes themeBadgePulse {
+  0% {
+    transform: translateY(0);
+    box-shadow: 0 8rpx 18rpx var(--theme-accent-soft, rgba(210, 255, 114, 0.24));
+  }
+
+  50% {
+    transform: translateY(-1rpx);
+    box-shadow: 0 12rpx 24rpx var(--theme-accent-soft, rgba(210, 255, 114, 0.32));
+  }
+
+  100% {
+    transform: translateY(0);
+    box-shadow: 0 8rpx 18rpx var(--theme-accent-soft, rgba(210, 255, 114, 0.24));
+  }
 }
 
 /* 列表行 */
@@ -122,8 +222,8 @@ page {
 /* 胶囊标签 / Pill Shape */
 .list-row-tag {
   flex-shrink: 0;
-  background: #D2FF72;
-  color: #111111;
+  background: var(--theme-accent, #D2FF72);
+  color: var(--theme-accent-ink, #111111);
   font-size: 22rpx;
   font-weight: 700;
   padding: 10rpx 28rpx;
@@ -164,6 +264,20 @@ page {
 .expanded-wrapper.show .expanded-content {
   opacity: 1;
   border-top-color: rgba(0, 0, 0, 0.03);
+}
+
+.updated-at-hint {
+  padding: 18rpx 32rpx 0;
+  font-size: 20rpx;
+  color: #A8A8A8;
+  letter-spacing: 0.6rpx;
+  line-height: 1.4;
+}
+
+.updated-at-loading {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
 }
 
 .loading-text {
@@ -408,7 +522,7 @@ page {
   background: #F9F9FB;
   border-radius: 12rpx;
   padding: 24rpx;
-  border-left: 6rpx solid #D2FF72;
+  border-left: 6rpx solid var(--theme-accent, #D2FF72);
 }
 
 .cc-slot-time {
@@ -580,9 +694,9 @@ page {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #D2FF72;
+  background: var(--theme-accent, #D2FF72);
   /* 替换为亮黄色背景 */
-  color: #111111;
+  color: var(--theme-accent-ink, #111111);
   /* 替换为深黑色文字 */
   font-size: 28rpx;
   font-weight: 600;
@@ -719,13 +833,13 @@ page {
 }
 
 .week-chip.selected {
-  background: #D2FF72;
+  background: var(--theme-accent, #D2FF72);
   /* 替换为亮黄色背景 */
-  border-color: #D2FF72;
+  border-color: var(--theme-accent, #D2FF72);
 }
 
 .week-chip.selected text {
-  color: #111111;
+  color: var(--theme-accent-ink, #111111);
   /* 替换为深黑色文字 */
   font-weight: 600;
 }

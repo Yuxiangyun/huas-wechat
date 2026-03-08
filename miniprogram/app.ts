@@ -9,9 +9,11 @@ App({
   },
 
   onLaunch() {
-    const logs = wx.getStorageSync('logs') || [];
-    logs.unshift(Date.now());
-    wx.setStorageSync('logs', logs);
+    try {
+      wx.removeStorageSync('logs');
+    } catch {
+      // Ignore cleanup errors.
+    }
 
     const token = storage.getToken();
     this.globalData.token = token;

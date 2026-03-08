@@ -99,7 +99,7 @@ miniprogram/
   - `token`
   - `last_login_username`
   - 可选 `credentials`
-- 支持公告入口（读取公告并记录已读 ID）。
+- 支持公告入口（未登录也可查看，读取公告并记录已读 ID）。
 
 ### 5.2 课表页 `pages/index`
 
@@ -145,23 +145,28 @@ miniprogram/
 1. 课表缓存：
 - TTL：24 小时
 - Key：`cache_schedule_${dataSourceIndex}_${date}`
+- 读写结构：`{ timestamp, data, updatedAtText }`
 - 每次拉取会做 GC：清理超过 24 小时的 `cache_schedule_*`
 - 若自定义课程发生变化：一次性清空全部 `cache_schedule_*`（已修复脏读问题）
 
 2. 成绩缓存：
 - TTL：6 小时
-- 读写结构：`{ timestamp, data }`
+- 读写结构：`{ timestamp, data, updatedAtText }`
 - 旧格式（非 timed cache）会自动清理
 
 3. 一卡通缓存：
 - TTL：5 分钟
-- 读写结构：`{ timestamp, data }`
+- 读写结构：`{ timestamp, data, updatedAtText }`
 - 旧格式（非 timed cache）会自动清理
 
 4. 清缓存按钮行为：
 - 删除前缀 `cache_` 与 `announcement_` 的 key
 - 保留：`token`、`credentials`、`custom_courses`
 - 同时写入 `schedule_cache_cleared=true`，触发首页强制刷新
+
+5. 最近更新时间展示：
+- 首页课表、更多页成绩、一卡通均显示“最近更新（北京时间）”灰色小字。
+- 优先使用服务端 `_meta.updated_at`；若缺失则回退到本地拉取时间。
 
 ## 7. 样式与布局维护要点
 
@@ -180,6 +185,9 @@ miniprogram/
 - 页面底色：`#F9F9FB`
 - 卡片圆角与弱阴影保持一致，不在页面随意新增风格分支
 
+4. 更新时间提示样式：
+- 使用弱对比灰色小字（20rpx 左右），位置贴近数据区域标题，不抢主内容层级。
+
 ## 8. 错误提示策略
 
 1. API 层：
@@ -188,6 +196,7 @@ miniprogram/
 2. 页面层：
 - 课表、用户信息、成绩、一卡通失败时使用 `res.msg` 或兜底 toast。
 - 公告读取失败给出 toast，不阻断主流程。
+- 未登录态也允许直接查看公告，不额外提示登录。
 
 3. 登录态失效：
 - `4001/3003` 自动回登录页，避免页面停留在失效态。
@@ -200,7 +209,7 @@ miniprogram/
 
 2. 新增缓存：
 - 必须声明 TTL。
-- 统一使用 `{ timestamp, data }` 结构。
+- 统一使用 `{ timestamp, data, updatedAtText }` 结构。
 - 明确失效触发条件（手动刷新、业务事件、账号切换）。
 
 3. 新增页面：
@@ -228,9 +237,13 @@ miniprogram/
 - 为一卡通缓存新增 5 分钟 TTL。
 - 兼容并清理旧版无时间戳缓存结构。
 
+5. 公告可见性与数据更新时间
+- 公告接口为公开访问（`/api/public/announcements` 无需 Bearer Token）。
+- 登录页支持未登录查看公告，并恢复未读红点判断。
+- 课表、成绩、一卡通新增“最近更新（北京时间）”提示，便于识别数据新鲜度。
+
 ## 11. 已知风险（待后续排期）
 
 1. `credentials` 为本地明文存储，存在设备侧泄露风险。
 2. `clearCacheKeepLogin` 按前缀删除，后续新增 key 命名需避免误删。
 3. `user_info` 目前无 TTL，依赖手动刷新更新。
-
