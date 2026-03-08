@@ -1,8 +1,10 @@
 // pages/index/index.ts - 课程表首页
 import { api, Course, PublicAnnouncement } from '../../utils/api';
+import { fetchPublicAnnouncements, hasUnreadAnnouncements, markAnnouncementsAsRead } from '../../utils/announcements';
 import { storage, setStorageWithAutoCleanup } from '../../utils/storage';
 import { customCourseStorage, parseWeekNum, formatWeeks } from '../../utils/custom-course/index';
-import { DEFAULT_SCHEDULE_THEME_KEY, getScheduleThemeByKey, type ScheduleTheme } from '../../utils/theme';
+import { buildThemeStyle, DEFAULT_SCHEDULE_THEME_KEY, getScheduleThemeByKey } from '../../utils/theme';
+import { setSelectedTab } from '../../utils/tab-bar';
 import { getBeijingNow, resolveRefreshHint, resolveUpdatedAtText, triggerLightHaptic } from '../../utils/util';
 
 interface DisplayCourse extends Course {
@@ -38,29 +40,6 @@ const SECTION_TIME_RANGES: SectionTimeRange[] = [
 ];
 
 let timeLineTimer: number | null = null;
-const ANNOUNCEMENT_READ_IDS_KEY = 'announcement_read_ids';
-
-function setSelectedTab(page: WechatMiniprogram.Page.Instance<any, any>, selected: number): void {
-  const getter = (page as WechatMiniprogram.Page.Instance<any, any> & {
-    getTabBar?: ((cb?: (tabBar: WechatMiniprogram.Component.TrivialInstance) => void) => WechatMiniprogram.Component.TrivialInstance | undefined);
-  }).getTabBar;
-
-  if (typeof getter !== 'function') return;
-
-  let handled = false;
-  getter.call(page, (tabBar: WechatMiniprogram.Component.TrivialInstance) => {
-    handled = true;
-    tabBar.setData({ selected });
-  });
-
-  if (!handled) {
-    const tabBar = getter.call(page);
-    if (tabBar) {
-      tabBar.setData({ selected });
-    }
-  }
-}
-
 function formatDate(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -99,10 +78,6 @@ function formatRemainText(remainMinutes: number): string {
     return minutes > 0 ? `${hours}h${minutes}` : `${hours}h`;
   }
   return `${remainMinutes}分`;
-}
-
-function buildThemeStyle(theme: ScheduleTheme): string {
-  return `--theme-accent:${theme.accent};--theme-accent-soft:${theme.accentSoft};--theme-accent-ink:${theme.accentInk};`;
 }
 
 Page({
@@ -574,11 +549,9 @@ Page({
 
   async checkAnnouncementUnread() {
     try {
-      const res = await api.getPublicAnnouncements();
+      const res = await fetchPublicAnnouncements();
       if ((res.code === 0 || res.code === 200) && Array.isArray(res.data)) {
-        const readIds: string[] = wx.getStorageSync(ANNOUNCEMENT_READ_IDS_KEY) || [];
-        const hasUnread = res.data.some((item: PublicAnnouncement) => !readIds.includes(String(item.id)));
-        this.setData({ showAnnouncementDot: hasUnread });
+        this.setData({ showAnnouncementDot: hasUnreadAnnouncements(res.data) });
       }
     } catch {
       // 静默失败，不影响主流程
@@ -589,10 +562,9 @@ Page({
     this.setData({ showAnnouncementsModal: true });
     try {
       wx.showLoading({ title: '加载中...' });
-      const res = await api.getPublicAnnouncements();
+      const res = await fetchPublicAnnouncements();
       if ((res.code === 0 || res.code === 200) && Array.isArray(res.data)) {
-        const readIds = res.data.map((item: PublicAnnouncement) => String(item.id));
-        setStorageWithAutoCleanup(ANNOUNCEMENT_READ_IDS_KEY, readIds);
+        markAnnouncementsAsRead(res.data);
         this.setData({ announcements: res.data, showAnnouncementDot: false });
       } else {
         wx.showToast({ title: res.msg || '获取公告失败', icon: 'none' });

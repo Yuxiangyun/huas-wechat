@@ -1,7 +1,6 @@
 import { api, PublicAnnouncement, UserInfo } from '../../utils/api';
-import { storage, setStorageWithAutoCleanup } from '../../utils/storage';
-
-const ANNOUNCEMENT_READ_IDS_KEY = 'announcement_read_ids';
+import { fetchPublicAnnouncements, hasUnreadAnnouncements, markAnnouncementsAsRead } from '../../utils/announcements';
+import { storage } from '../../utils/storage';
 const CAPTCHA_REQUIRED_MSG = '学校系统要求补充验证码。这通常是密码或学号输错后触发，请先核对密码，再输入验证码登录。';
 const CREDENTIAL_ERROR_MSG = '学号或密码错误，请核对后重新登录。';
 const CREDENTIAL_ERROR_WITH_CAPTCHA_MSG = '学号或密码可能不正确。请先核对密码，再填写验证码登录。';
@@ -197,11 +196,9 @@ Page({
 
   async checkAnnouncementUnread(): Promise<void> {
     try {
-      const res = await api.getPublicAnnouncements();
+      const res = await fetchPublicAnnouncements();
       if ((res.code === 0 || res.code === 200) && Array.isArray(res.data)) {
-        const readIds: string[] = wx.getStorageSync(ANNOUNCEMENT_READ_IDS_KEY) || [];
-        const hasUnread = res.data.some((item: PublicAnnouncement) => !readIds.includes(String(item.id)));
-        this.setData({ showAnnouncementDot: hasUnread });
+        this.setData({ showAnnouncementDot: hasUnreadAnnouncements(res.data) });
       }
     } catch {
       // 静默失败，不影响登录流程。
@@ -212,10 +209,9 @@ Page({
     this.setData({ showAnnouncementsModal: true });
     try {
       wx.showLoading({ title: '加载中...' });
-      const res = await api.getPublicAnnouncements();
+      const res = await fetchPublicAnnouncements();
       if ((res.code === 0 || res.code === 200) && Array.isArray(res.data)) {
-        const readIds = res.data.map((item: PublicAnnouncement) => String(item.id));
-        setStorageWithAutoCleanup(ANNOUNCEMENT_READ_IDS_KEY, readIds);
+        markAnnouncementsAsRead(res.data);
         this.setData({ announcements: res.data, showAnnouncementDot: false });
       } else {
         wx.showToast({ title: res.msg || '获取公告失败', icon: 'none' });

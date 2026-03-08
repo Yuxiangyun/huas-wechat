@@ -1,31 +1,7 @@
 import { storage } from '../../utils/storage';
-import { DEFAULT_SCHEDULE_THEME_KEY, getScheduleThemeByKey, type ScheduleThemeKey, type ScheduleTheme } from '../../utils/theme';
+import { buildThemeStyle, DEFAULT_SCHEDULE_THEME_KEY, getScheduleThemeByKey, type ScheduleThemeKey } from '../../utils/theme';
+import { setSelectedTab } from '../../utils/tab-bar';
 import { getBeijingHour } from '../../utils/util';
-
-function setSelectedTab(page: WechatMiniprogram.Page.Instance<any, any>, selected: number): void {
-  const getter = (page as WechatMiniprogram.Page.Instance<any, any> & {
-    getTabBar?: ((cb?: (tabBar: WechatMiniprogram.Component.TrivialInstance) => void) => WechatMiniprogram.Component.TrivialInstance | undefined);
-  }).getTabBar;
-
-  if (typeof getter !== 'function') return;
-
-  let handled = false;
-  getter.call(page, (tabBar: WechatMiniprogram.Component.TrivialInstance) => {
-    handled = true;
-    tabBar.setData({ selected });
-  });
-
-  if (!handled) {
-    const tabBar = getter.call(page);
-    if (tabBar) {
-      tabBar.setData({ selected });
-    }
-  }
-}
-
-function buildThemeStyle(theme: ScheduleTheme): string {
-  return `--theme-accent:${theme.accent};--theme-accent-soft:${theme.accentSoft};--theme-accent-ink:${theme.accentInk};`;
-}
 
 Page({
   data: {

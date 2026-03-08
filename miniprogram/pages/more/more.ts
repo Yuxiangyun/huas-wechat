@@ -2,7 +2,8 @@
 import { api, UserInfo, ECardInfo, GradeList, GradeItem } from '../../utils/api';
 import { storage, setStorageWithAutoCleanup } from '../../utils/storage';
 import { customCourseStorage, formatWeeks } from '../../utils/custom-course/index';
-import { DEFAULT_SCHEDULE_THEME_KEY, SCHEDULE_THEME_OPTIONS, getScheduleThemeByKey, type ScheduleTheme } from '../../utils/theme';
+import { buildThemeStyle, DEFAULT_SCHEDULE_THEME_KEY, SCHEDULE_THEME_OPTIONS, getScheduleThemeByKey } from '../../utils/theme';
+import { setSelectedTab } from '../../utils/tab-bar';
 import { resolveRefreshHint, resolveUpdatedAtText, triggerLightHaptic } from '../../utils/util';
 import type { CustomCourse } from '../../utils/custom-course/index';
 
@@ -38,27 +39,6 @@ interface TimedCache<T> {
 const GRADES_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const ECARD_CACHE_TTL_MS = 5 * 60 * 1000;
 const DEFAULT_SCHEDULE_THEME = getScheduleThemeByKey(DEFAULT_SCHEDULE_THEME_KEY);
-
-function setSelectedTab(page: WechatMiniprogram.Page.Instance<any, any>, selected: number): void {
-    const getter = (page as WechatMiniprogram.Page.Instance<any, any> & {
-        getTabBar?: ((cb?: (tabBar: WechatMiniprogram.Component.TrivialInstance) => void) => WechatMiniprogram.Component.TrivialInstance | undefined);
-    }).getTabBar;
-
-    if (typeof getter !== 'function') return;
-
-    let handled = false;
-    getter.call(page, (tabBar: WechatMiniprogram.Component.TrivialInstance) => {
-        handled = true;
-        tabBar.setData({ selected });
-    });
-
-    if (!handled) {
-        const tabBar = getter.call(page);
-        if (tabBar) {
-            tabBar.setData({ selected });
-        }
-    }
-}
 
 function showApiErrorToast(msg: string | undefined, fallback: string): void {
     wx.showToast({
@@ -98,10 +78,6 @@ function readTimedCache<T>(key: string, ttlMs: number): TimedCache<T> | null {
 
 function writeTimedCache<T>(key: string, data: T, updatedAtText?: string, refreshHint?: string): void {
     setStorageWithAutoCleanup(key, { timestamp: Date.now(), data, updatedAtText, refreshHint } as TimedCache<T>);
-}
-
-function buildThemeStyle(theme: ScheduleTheme): string {
-    return `--theme-accent:${theme.accent};--theme-accent-soft:${theme.accentSoft};--theme-accent-ink:${theme.accentInk};`;
 }
 
 Page({

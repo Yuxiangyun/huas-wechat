@@ -173,3 +173,7 @@ export function getScheduleThemeByKey(themeKey: string | null | undefined): Sche
   const found = SCHEDULE_THEMES.find((theme) => theme.key === themeKey);
   return found || SCHEDULE_THEMES[0];
 }
+
+export function buildThemeStyle(theme: Pick<ScheduleTheme, 'accent' | 'accentSoft' | 'accentInk'>): string {
+  return `--theme-accent:${theme.accent};--theme-accent-soft:${theme.accentSoft};--theme-accent-ink:${theme.accentInk};`;
+}
