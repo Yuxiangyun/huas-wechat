@@ -1,6 +1,8 @@
 // pages/more/more.ts - 更多页面
 import { api, UserInfo, ECardInfo, GradeList, GradeItem } from '../../utils/api';
-import { storage, setStorageWithAutoCleanup } from '../../utils/storage';
+import { readTimedCache, writeTimedCache } from '../../utils/local-cache';
+import { createCoverShareContent, createShareAppMessage, createShareTimeline } from '../../utils/share';
+import { storage } from '../../utils/storage';
 import { customCourseStorage, formatWeeks } from '../../utils/custom-course/index';
 import { buildThemeStyle, DEFAULT_SCHEDULE_THEME_KEY, SCHEDULE_THEME_OPTIONS, getScheduleThemeByKey } from '../../utils/theme';
 import { setSelectedTab } from '../../utils/tab-bar';
@@ -29,13 +31,6 @@ interface GroupedCustomCourse {
     items: DisplayCustomCourse[];
 }
 
-interface TimedCache<T> {
-    timestamp: number;
-    data: T;
-    updatedAtText?: string;
-    refreshHint?: string;
-}
-
 const GRADES_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const ECARD_CACHE_TTL_MS = 5 * 60 * 1000;
 const DEFAULT_SCHEDULE_THEME = getScheduleThemeByKey(DEFAULT_SCHEDULE_THEME_KEY);
@@ -45,39 +40,6 @@ function showApiErrorToast(msg: string | undefined, fallback: string): void {
         title: msg || fallback,
         icon: 'none',
     });
-}
-
-function readTimedCache<T>(key: string, ttlMs: number): TimedCache<T> | null {
-    try {
-        const raw = wx.getStorageSync(key) as TimedCache<T> | Record<string, unknown> | '' | undefined;
-        if (!raw || typeof raw !== 'object') {
-            return null;
-        }
-
-        const timed = raw as Partial<TimedCache<T>>;
-        if (typeof timed.timestamp !== 'number' || !('data' in timed)) {
-            wx.removeStorageSync(key);
-            return null;
-        }
-
-        if (Date.now() - timed.timestamp > ttlMs) {
-            wx.removeStorageSync(key);
-            return null;
-        }
-
-        return {
-            timestamp: timed.timestamp,
-            data: timed.data as T,
-            updatedAtText: typeof timed.updatedAtText === 'string' ? timed.updatedAtText : undefined,
-            refreshHint: typeof timed.refreshHint === 'string' ? timed.refreshHint : undefined,
-        };
-    } catch {
-        return null;
-    }
-}
-
-function writeTimedCache<T>(key: string, data: T, updatedAtText?: string, refreshHint?: string): void {
-    setStorageWithAutoCleanup(key, { timestamp: Date.now(), data, updatedAtText, refreshHint } as TimedCache<T>);
 }
 
 Page({
@@ -592,6 +554,6 @@ Page({
         });
     },
 
-    onShareAppMessage() { return { title: '为文理er准备的小程序，欢迎使用！', path: '/pages/index/index', imageUrl: '/images/share-cover.png' }; },
-    onShareTimeline() { return { title: '为文理er准备的小程序，欢迎使用！', imageUrl: '/images/share-cover.png' }; },
+    onShareAppMessage() { return createShareAppMessage(createCoverShareContent('为文理er准备的小程序，欢迎使用！')); },
+    onShareTimeline() { return createShareTimeline(createCoverShareContent('为文理er准备的小程序，欢迎使用！')); },
 });

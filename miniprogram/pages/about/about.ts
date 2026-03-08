@@ -1,4 +1,5 @@
 import { storage } from '../../utils/storage';
+import { createDefaultShareContent, createShareAppMessage, createShareTimeline } from '../../utils/share';
 import { buildThemeStyle, DEFAULT_SCHEDULE_THEME_KEY, getScheduleThemeByKey, type ScheduleThemeKey } from '../../utils/theme';
 import { setSelectedTab } from '../../utils/tab-bar';
 import { getBeijingHour } from '../../utils/util';
@@ -67,15 +68,10 @@ Page({
   },
 
   onShareAppMessage() {
-    return {
-      title: '为文理er准备的查课表，查成绩小程序，欢迎使用！',
-      path: '/pages/index/index',
-    };
+    return createShareAppMessage(createDefaultShareContent('为文理er准备的查课表，查成绩小程序，欢迎使用！'));
   },
 
   onShareTimeline() {
-    return {
-      title: '为文理er准备的查课表，查成绩小程序，欢迎使用！',
-    };
+    return createShareTimeline(createDefaultShareContent('为文理er准备的查课表，查成绩小程序，欢迎使用！'));
   },
 });

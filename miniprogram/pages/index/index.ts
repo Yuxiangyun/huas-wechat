@@ -1,6 +1,7 @@
 // pages/index/index.ts - 课程表首页
 import { api, Course, PublicAnnouncement } from '../../utils/api';
 import { fetchPublicAnnouncements, hasUnreadAnnouncements, markAnnouncementsAsRead } from '../../utils/announcements';
+import { createDefaultShareContent, createShareAppMessage } from '../../utils/share';
 import { storage, setStorageWithAutoCleanup } from '../../utils/storage';
 import { customCourseStorage, parseWeekNum, formatWeeks } from '../../utils/custom-course/index';
 import { buildThemeStyle, DEFAULT_SCHEDULE_THEME_KEY, getScheduleThemeByKey } from '../../utils/theme';
@@ -580,5 +581,5 @@ Page({
     this.setData({ showAnnouncementsModal: false });
   },
 
-  onShareAppMessage() { return { title: '为文理er准备的查课表小程序！', path: '/pages/index/index' }; }
+  onShareAppMessage() { return createShareAppMessage(createDefaultShareContent('为文理er准备的查课表小程序！')); }
 });

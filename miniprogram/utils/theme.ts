@@ -110,7 +110,7 @@ const SAKURA_COLORS: ThemeCourseColor[] = [
 export const SCHEDULE_THEMES: ScheduleTheme[] = [
   {
     key: 'lime',
-    name: '青柠活力',
+    name: '青柠',
     description: '清新高亮，默认风格',
     accent: '#D2FF72',
     accentSoft: 'rgba(210, 255, 114, 0.24)',
@@ -119,7 +119,7 @@ export const SCHEDULE_THEMES: ScheduleTheme[] = [
   },
   {
     key: 'ocean',
-    name: '海盐蓝',
+    name: '海盐',
     description: '冷静通透，低疲劳',
     accent: '#8FD3FF',
     accentSoft: 'rgba(143, 211, 255, 0.24)',
@@ -128,7 +128,7 @@ export const SCHEDULE_THEMES: ScheduleTheme[] = [
   },
   {
     key: 'mint',
-    name: '薄荷青',
+    name: '薄荷',
     description: '自然轻盈，阅读舒适',
     accent: '#86E7C7',
     accentSoft: 'rgba(134, 231, 199, 0.24)',
@@ -137,7 +137,7 @@ export const SCHEDULE_THEMES: ScheduleTheme[] = [
   },
   {
     key: 'sunset',
-    name: '暮光橙',
+    name: '暮光',
     description: '暖色柔和，层次明显',
     accent: '#FFBE7A',
     accentSoft: 'rgba(255, 190, 122, 0.24)',
@@ -146,7 +146,7 @@ export const SCHEDULE_THEMES: ScheduleTheme[] = [
   },
   {
     key: 'sakura',
-    name: '樱花粉',
+    name: '樱花',
     description: '柔和甜感，信息清晰',
     accent: '#F7A8C8',
     accentSoft: 'rgba(247, 168, 200, 0.24)',
