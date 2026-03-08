@@ -20,11 +20,11 @@
       <view wx:if="{{scheduleRefreshing}}" class="subtitle-updated subtitle-updating">
         <text>刷新中...</text>
       </view>
-      <view wx:elif="{{scheduleUpdatedAtText}}" class="subtitle-updated">
-        最近更新 · {{scheduleUpdatedAtText}}
-      </view>
       <view wx:elif="{{scheduleRefreshHint}}" class="subtitle-updated">
         {{scheduleRefreshHint}}
+      </view>
+      <view wx:elif="{{scheduleUpdatedAtText}}" class="subtitle-updated">
+        最近更新 · {{scheduleUpdatedAtText}}
       </view>
     </view>
     <view class="action-area">
@@ -57,7 +57,7 @@
   <scroll-view class="schedule-scroll" scroll-x scroll-y enable-flex>
     <view wx:if="{{!loading && courses.length === 0}}" class="empty-state">
       <text class="empty-emoji">👻</text>
-      <text class="empty-text">暂无课程，好好休息吧</text>
+      <text class="empty-text">{{scheduleMessage || '暂无课程，好好休息吧'}}</text>
     </view>
     <view wx:else class="table-container {{showWeekend ? '' : 'hide-weekend'}}">
       <view class="table-row header-row">

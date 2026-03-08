@@ -3,7 +3,7 @@ import { api, UserInfo, ECardInfo, GradeList, GradeItem } from '../../utils/api'
 import { storage, setStorageWithAutoCleanup } from '../../utils/storage';
 import { customCourseStorage, formatWeeks } from '../../utils/custom-course/index';
 import { DEFAULT_SCHEDULE_THEME_KEY, SCHEDULE_THEME_OPTIONS, getScheduleThemeByKey, type ScheduleTheme } from '../../utils/theme';
-import { resolveUpdatedAtText, triggerLightHaptic } from '../../utils/util';
+import { resolveRefreshHint, resolveUpdatedAtText, triggerLightHaptic } from '../../utils/util';
 import type { CustomCourse } from '../../utils/custom-course/index';
 
 interface TermGrades {
@@ -32,6 +32,7 @@ interface TimedCache<T> {
     timestamp: number;
     data: T;
     updatedAtText?: string;
+    refreshHint?: string;
 }
 
 const GRADES_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
@@ -88,14 +89,15 @@ function readTimedCache<T>(key: string, ttlMs: number): TimedCache<T> | null {
             timestamp: timed.timestamp,
             data: timed.data as T,
             updatedAtText: typeof timed.updatedAtText === 'string' ? timed.updatedAtText : undefined,
+            refreshHint: typeof timed.refreshHint === 'string' ? timed.refreshHint : undefined,
         };
     } catch {
         return null;
     }
 }
 
-function writeTimedCache<T>(key: string, data: T, updatedAtText?: string): void {
-    setStorageWithAutoCleanup(key, { timestamp: Date.now(), data, updatedAtText } as TimedCache<T>);
+function writeTimedCache<T>(key: string, data: T, updatedAtText?: string, refreshHint?: string): void {
+    setStorageWithAutoCleanup(key, { timestamp: Date.now(), data, updatedAtText, refreshHint } as TimedCache<T>);
 }
 
 function buildThemeStyle(theme: ScheduleTheme): string {
@@ -206,9 +208,11 @@ Page({
                         gradesByTerm: cachedGradesByTerm.data,
                         gradesLoading: false,
                         gradesRefreshing: false,
-                        gradesRefreshHint: '',
+                        gradesRefreshHint: cachedGrades.refreshHint || '',
                     };
-                    if (cachedGrades.updatedAtText) {
+                    if (cachedGrades.refreshHint) {
+                        nextData.gradesUpdatedAtText = '';
+                    } else if (cachedGrades.updatedAtText) {
                         nextData.gradesUpdatedAtText = cachedGrades.updatedAtText;
                     } else {
                         nextData.gradesUpdatedAtText = '';
@@ -236,15 +240,17 @@ Page({
                     .map(term => ({ term, items: termMap[term] }));
 
                 const gradesUpdatedAtText = resolveUpdatedAtText(res.meta?.updated_at);
+                const gradesRefreshHint = resolveRefreshHint(res.meta, gradesUpdatedAtText)
+                    || (gradesUpdatedAtText ? '' : '已更新');
                 const nextData: Record<string, unknown> = {
                     grades,
                     gradesByTerm,
-                    gradesUpdatedAtText: gradesUpdatedAtText || '',
-                    gradesRefreshHint: gradesUpdatedAtText ? '' : '已更新',
+                    gradesUpdatedAtText: gradesRefreshHint ? '' : (gradesUpdatedAtText || ''),
+                    gradesRefreshHint,
                 };
                 this.setData(nextData);
-                writeTimedCache('cache_grades', grades, gradesUpdatedAtText);
-                writeTimedCache('cache_grades_by_term', gradesByTerm, gradesUpdatedAtText);
+                writeTimedCache('cache_grades', grades, gradesUpdatedAtText, gradesRefreshHint);
+                writeTimedCache('cache_grades_by_term', gradesByTerm, gradesUpdatedAtText, gradesRefreshHint);
             } else {
                 this.setData({ grades: null, gradesByTerm: [], gradesUpdatedAtText: '', gradesRefreshHint: '' });
                 showApiErrorToast(res.msg, '获取成绩失败');
@@ -283,9 +289,11 @@ Page({
                         ecard: cachedECard.data,
                         ecardLoading: false,
                         ecardRefreshing: false,
-                        ecardRefreshHint: '',
+                        ecardRefreshHint: cachedECard.refreshHint || '',
                     };
-                    if (cachedECard.updatedAtText) {
+                    if (cachedECard.refreshHint) {
+                        nextData.ecardUpdatedAtText = '';
+                    } else if (cachedECard.updatedAtText) {
                         nextData.ecardUpdatedAtText = cachedECard.updatedAtText;
                     } else {
                         nextData.ecardUpdatedAtText = '';
@@ -300,13 +308,15 @@ Page({
             const res = await api.getECard(forceRefresh);
             if ((res.code === 0 || res.code === 200) && res.data) {
                 const ecardUpdatedAtText = resolveUpdatedAtText(res.meta?.updated_at);
+                const ecardRefreshHint = resolveRefreshHint(res.meta, ecardUpdatedAtText)
+                    || (ecardUpdatedAtText ? '' : '已更新');
                 const nextData: Record<string, unknown> = {
                     ecard: res.data,
-                    ecardUpdatedAtText: ecardUpdatedAtText || '',
-                    ecardRefreshHint: ecardUpdatedAtText ? '' : '已更新',
+                    ecardUpdatedAtText: ecardRefreshHint ? '' : (ecardUpdatedAtText || ''),
+                    ecardRefreshHint,
                 };
                 this.setData(nextData);
-                writeTimedCache('cache_ecard', res.data, ecardUpdatedAtText);
+                writeTimedCache('cache_ecard', res.data, ecardUpdatedAtText, ecardRefreshHint);
             } else {
                 this.setData({ ecard: null, ecardUpdatedAtText: '', ecardRefreshHint: '' });
                 showApiErrorToast(res.msg, '获取一卡通失败');
@@ -595,8 +605,7 @@ Page({
             title: '提示', content: '确定要退出登录吗？',
             success: (res) => {
                 if (res.confirm) {
-                    storage.clearToken();
-                    storage.removeUserInfo();
+                    storage.clearAll();
                     const app = getApp<IAppOption>();
                     app.globalData.token = '';
                     app.globalData.isLoggedIn = false;

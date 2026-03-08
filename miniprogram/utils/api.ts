@@ -6,6 +6,9 @@ export interface ApiMeta {
   source?: string;
   updated_at?: string;
   expires_at?: string;
+  stale?: boolean;
+  refresh_failed?: boolean;
+  last_error?: number;
 }
 
 interface ServerSuccess<T> {
@@ -425,7 +428,7 @@ export const api = {
 
     return {
       ...response,
-      data: response.data ? normalizePortalSchedule(response.data) : null,
+      data: response.data ? normalizeSchedulePayload(response.data) : null,
     };
   },
 

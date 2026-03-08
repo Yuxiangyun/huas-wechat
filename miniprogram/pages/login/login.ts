@@ -3,10 +3,8 @@ import { storage, setStorageWithAutoCleanup } from '../../utils/storage';
 
 const ANNOUNCEMENT_READ_IDS_KEY = 'announcement_read_ids';
 const CAPTCHA_REQUIRED_MSG = '学校系统要求补充验证码。这通常是密码或学号输错后触发，请先核对密码，再输入验证码登录。';
-const AUTO_LOGIN_CAPTCHA_REQUIRED_MSG = '自动登录未通过，学校系统要求补充验证码。请核对密码后，输入验证码手动登录。';
 const CREDENTIAL_ERROR_MSG = '学号或密码错误，请核对后重新登录。';
 const CREDENTIAL_ERROR_WITH_CAPTCHA_MSG = '学号或密码可能不正确。请先核对密码，再填写验证码登录。';
-const AUTO_LOGIN_CREDENTIAL_ERROR_MSG = '自动登录失败，保存的账号或密码可能已失效，请核对后手动登录。';
 const SESSION_EXPIRED_MSG = '凭证过期，请重新登录～';
 
 function isCredentialError(msg?: string): boolean {
@@ -28,7 +26,7 @@ function isGenericCaptchaPrompt(msg?: string): boolean {
   return !normalizedMsg || normalizedMsg === '需要验证码' || normalizedMsg === '请输入验证码后重试';
 }
 
-function getCaptchaGuidance(msg?: string, mode: 'auto' | 'manual' = 'manual'): string {
+function getCaptchaGuidance(msg?: string): string {
   const normalizedMsg = (msg || '').trim();
 
   if (normalizedMsg.includes('验证码错误')) {
@@ -36,30 +34,26 @@ function getCaptchaGuidance(msg?: string, mode: 'auto' | 'manual' = 'manual'): s
   }
 
   if (isGenericCaptchaPrompt(normalizedMsg)) {
-    return mode === 'auto' ? AUTO_LOGIN_CAPTCHA_REQUIRED_MSG : CAPTCHA_REQUIRED_MSG;
+    return CAPTCHA_REQUIRED_MSG;
   }
 
   return normalizedMsg;
 }
 
-function getLoginErrorGuidance(
-  msg?: string,
-  options: { mode?: 'auto' | 'manual'; showCaptcha?: boolean } = {},
-): string {
-  const { mode = 'manual', showCaptcha = false } = options;
+function getLoginErrorGuidance(msg?: string, options: { showCaptcha?: boolean } = {}): string {
+  const { showCaptcha = false } = options;
   const normalizedMsg = (msg || '').trim();
 
   if (normalizedMsg.includes('验证码错误') || isGenericCaptchaPrompt(normalizedMsg)) {
-    return getCaptchaGuidance(normalizedMsg, mode);
+    return getCaptchaGuidance(normalizedMsg);
   }
 
   if (isCredentialError(normalizedMsg)) {
-    if (mode === 'auto') return AUTO_LOGIN_CREDENTIAL_ERROR_MSG;
     return showCaptcha ? CREDENTIAL_ERROR_WITH_CAPTCHA_MSG : CREDENTIAL_ERROR_MSG;
   }
 
   if (!normalizedMsg) {
-    return mode === 'auto' ? '自动登录失败，请手动登录。' : '登录失败，请稍后重试。';
+    return '登录失败，请稍后重试。';
   }
 
   return normalizedMsg;
@@ -78,7 +72,6 @@ Page({
     errorMsg: '',
     showCaptcha: false,
     isLogout: false,
-    autoLoginTip: '',
     showAnnouncementsModal: false,
     showAnnouncementDot: false,
     announcements: [] as PublicAnnouncement[],
@@ -102,21 +95,6 @@ Page({
       return;
     }
 
-    const credentials = storage.getCredentials();
-    const remember = storage.getRememberPassword();
-    const hasSavedUsername = Boolean(credentials && credentials.username);
-    const hasSavedPassword = Boolean(credentials && credentials.password);
-    const canAutoLogin =
-      !this.data.isLogout &&
-      remember &&
-      hasSavedUsername &&
-      hasSavedPassword &&
-      !this.data.loading;
-
-    if (canAutoLogin && credentials) {
-      this.tryAutoLogin(credentials.username, credentials.password);
-    }
-
     this.setData({
       isLogout: false,
       showAnnouncementDot: false,
@@ -132,52 +110,25 @@ Page({
     if (!rememberValue) return;
 
     const credentials = storage.getCredentials();
-    if (!credentials) return;
-
-    this.setData({
-      username: credentials.username,
-      password: credentials.password,
-    });
-  },
-
-  async tryAutoLogin(username: string, password: string): Promise<void> {
-    if (this.data.loading) return;
-
-    this.setData({
-      loading: true,
-      errorMsg: '',
-      autoLoginTip: '正在自动登录...',
-    });
-
-    const res = await api.login({ username, password });
-
-    if (res.code === 200 && res.data) {
-      this.setData({ autoLoginTip: '' });
-      this.onLoginSuccess(res.data.token, username, password, res.data.user);
-      return;
-    }
-
-    if (res.needCaptcha) {
+    if (credentials) {
       this.setData({
-        loading: false,
-        autoLoginTip: '',
-        showCaptcha: true,
-        sessionId: res.sessionId || '',
-        captchaImage: res.captchaImage ? `data:image/png;base64,${res.captchaImage}` : '',
-        errorMsg: getCaptchaGuidance(res.msg, 'auto'),
+        username: credentials.username,
+        password: credentials.password,
       });
       return;
     }
 
-    const displayMsg = getLoginErrorGuidance(res.msg, { mode: 'auto' });
+    const lastLoginUsername = storage.getLastLoginUsername();
+    if (!lastLoginUsername) {
+      return;
+    }
+
     this.setData({
-      loading: false,
-      autoLoginTip: '',
-      errorMsg: displayMsg,
+      username: lastLoginUsername,
     });
   },
 
-  onLoginSuccess(token: string, username: string, password: string, user?: UserInfo): void {
+  onLoginSuccess(token: string, username: string, user?: UserInfo): void {
     this.setData({ loading: false });
 
     const lastLoginUsername = storage.getLastLoginUsername();
@@ -193,10 +144,12 @@ Page({
     }
 
     if (this.data.rememberPassword) {
-      storage.saveCredentials(username, password);
+      storage.saveCredentials(username, this.data.password.trim());
+      storage.saveLastLoginUsername(username);
       storage.setRememberPassword(true);
     } else {
       storage.removeCredentials();
+      storage.removeLastLoginUsername();
       storage.setRememberPassword(false);
     }
 
@@ -234,6 +187,7 @@ Page({
 
     if (!remember) {
       storage.removeCredentials();
+      storage.removeLastLoginUsername();
     }
   },
 
@@ -359,7 +313,7 @@ Page({
     });
 
     if (res.code === 200 && res.data) {
-      this.onLoginSuccess(res.data.token, cleanUsername, cleanPassword, res.data.user);
+      this.onLoginSuccess(res.data.token, cleanUsername, res.data.user);
       return;
     }
 

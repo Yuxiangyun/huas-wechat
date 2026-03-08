@@ -181,6 +181,10 @@ export const storage = {
     return username || '';
   },
 
+  removeLastLoginUsername(): void {
+    wx.removeStorageSync(KEYS.lastLoginUsername);
+  },
+
   saveScheduleTheme(themeKey: string): void {
     setSafe(KEYS.scheduleTheme, themeKey);
   },

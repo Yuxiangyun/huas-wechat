@@ -3,7 +3,7 @@ import { api, Course, PublicAnnouncement } from '../../utils/api';
 import { storage, setStorageWithAutoCleanup } from '../../utils/storage';
 import { customCourseStorage, parseWeekNum, formatWeeks } from '../../utils/custom-course/index';
 import { DEFAULT_SCHEDULE_THEME_KEY, getScheduleThemeByKey, type ScheduleTheme } from '../../utils/theme';
-import { getBeijingNow, resolveUpdatedAtText, triggerLightHaptic } from '../../utils/util';
+import { getBeijingNow, resolveRefreshHint, resolveUpdatedAtText, triggerLightHaptic } from '../../utils/util';
 
 interface DisplayCourse extends Course {
   id: string;
@@ -352,21 +352,22 @@ Page({
       const cacheData = wx.getStorageSync(cacheKey);
 
       if (!forceRefresh && cacheData) {
-        const { timestamp, data, updatedAtText } = cacheData as {
+        const { timestamp, data, updatedAtText, refreshHint } = cacheData as {
           timestamp: number;
           data: { week?: string; courses?: Course[]; message?: string };
           updatedAtText?: string;
+          refreshHint?: string;
         };
         const ONE_DAY_MS = 24 * 60 * 60 * 1000;
         if (Date.now() - timestamp < ONE_DAY_MS) {
-          if (typeof updatedAtText === 'string' && updatedAtText) {
+          if ((typeof updatedAtText === 'string' && updatedAtText) || (typeof refreshHint === 'string' && refreshHint)) {
             console.log(`✅ [Cache] 课程表(${selectedDate})：命中24小时本地缓存`);
             this.setData({
               currentWeek: currentDataSourceIndex === 1 ? '' : (data.week || '未知'),
               allCourses: Array.isArray(data.courses) ? data.courses : [],
               scheduleMessage: data.message || '',
-              scheduleUpdatedAtText: updatedAtText,
-              scheduleRefreshHint: '',
+              scheduleUpdatedAtText: refreshHint ? '' : (updatedAtText || ''),
+              scheduleRefreshHint: refreshHint || '',
               loading: false
             });
             this.processCourses();
@@ -394,6 +395,8 @@ Page({
 
       if ((res.code === 0 || res.code === 200) && res.data) {
         const scheduleUpdatedAtText = resolveUpdatedAtText(res.meta?.updated_at);
+        const scheduleRefreshHint = resolveRefreshHint(res.meta, scheduleUpdatedAtText)
+          || (scheduleUpdatedAtText ? '' : '已更新');
         const dataToCache = {
           week: res.data.week,
           courses: res.data.courses,
@@ -403,14 +406,15 @@ Page({
           timestamp: Date.now(),
           data: dataToCache,
           ...(scheduleUpdatedAtText ? { updatedAtText: scheduleUpdatedAtText } : {}),
+          ...(scheduleRefreshHint ? { refreshHint: scheduleRefreshHint } : {}),
         });
 
         const nextData: Record<string, unknown> = {
           currentWeek: currentDataSourceIndex === 1 ? '' : (res.data.week || '未知'),
           allCourses: Array.isArray(res.data.courses) ? res.data.courses : [],
           scheduleMessage: res.data.message || '',
-          scheduleUpdatedAtText: scheduleUpdatedAtText || '',
-          scheduleRefreshHint: scheduleUpdatedAtText ? '' : '已更新',
+          scheduleUpdatedAtText: scheduleRefreshHint ? '' : (scheduleUpdatedAtText || ''),
+          scheduleRefreshHint,
         };
         this.setData(nextData);
         this.processCourses();

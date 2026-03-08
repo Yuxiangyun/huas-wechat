@@ -49,10 +49,6 @@
         <view wx:if="{{showAnnouncementDot}}" class="announcement-dot"></view>
       </view>
     </view>
-    <!-- 自动登录提示 -->
-    <view wx:if="{{autoLoginTip}}" class="auto-login-tip">
-      <text>{{autoLoginTip}}</text>
-    </view>
   </view>
   <view class="announcement-modal-mask" wx:if="{{showAnnouncementsModal}}" bindtap="hideAnnouncements" catchtouchmove="noop">
     <view class="announcement-modal" catchtap="noop" catchtouchmove="noop">

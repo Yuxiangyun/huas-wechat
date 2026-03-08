@@ -140,6 +140,36 @@ export const resolveUpdatedAtText = (serverUpdatedAt?: string): string | undefin
   return text || undefined;
 };
 
+interface CacheStateMeta {
+  stale?: boolean;
+  refresh_failed?: boolean;
+  last_error?: number;
+}
+
+export const resolveRefreshHint = (
+  meta?: CacheStateMeta,
+  updatedAtText?: string,
+): string | undefined => {
+  if (!meta?.stale) return undefined;
+
+  let reason = '当前显示旧缓存';
+  if (meta.refresh_failed) {
+    switch (meta.last_error) {
+      case 3003:
+        reason = '学校凭证恢复失败，当前显示旧缓存';
+        break;
+      case 3004:
+        reason = '学校服务超时，当前显示旧缓存';
+        break;
+      default:
+        reason = '学校服务异常，当前显示旧缓存';
+        break;
+    }
+  }
+
+  return updatedAtText ? `${reason} · 最近更新 ${updatedAtText}` : reason;
+};
+
 export const triggerLightHaptic = (): void => {
   if (typeof wx.vibrateShort !== 'function') return;
   wx.vibrateShort({
