@@ -1,64 +1,28 @@
 <view class="more-container" style="{{themeStyle}}">
   <view class="hero-section">
     <view class="title-row">
-      <text class="title-black">你好，</text>
+      <text class="title-black">Hi,</text>
       <text class="title-yellow">{{userInfo.name || '同学'}}</text>
     </view>
     <text class="subtitle">
-      {{userInfo.studentId || 'STUDENT ID'}} · {{userInfo.className || 'CLASS INFO'}}
+      {{userInfo.className || '暂未获取班级信息'}} · 学号 {{userInfo.studentId || '暂未获取'}}
     </text>
   </view>
-  <view class="content-area">
-    <view class="section">
-      <view class="section-title">Schedule Theme</view>
-      <view class="list-card">
-        <view class="list-row theme-entry-row" bindtap="toggleScheduleThemes" hover-class="row-hover" hover-start-time="0" hover-stay-time="150">
-          <view class="list-content">
-            <text class="list-row-label">课表主题色</text>
-            <text class="list-row-hint">当前：{{currentScheduleThemeName}}，点击立即换肤</text>
-          </view>
-          <view class="theme-entry-actions">
-            <view class="list-row-tag theme-entry-tag">换肤</view>
-            <text class="toggle-arrow">{{showScheduleThemes ? '︿' : '﹀'}}</text>
-          </view>
-        </view>
-        <view class="expanded-wrapper {{showScheduleThemes ? 'show' : ''}}">
-          <view class="expanded-content theme-expanded-content">
-            <view class="theme-card">
-              <view class="theme-grid">
-                <view
-                  class="theme-option {{currentScheduleThemeKey === item.key ? 'selected' : ''}}"
-                  wx:for="{{scheduleThemeOptions}}"
-                  wx:key="key"
-                  data-key="{{item.key}}"
-                  bindtap="onScheduleThemeSelect"
-                >
-                  <view class="theme-swatch" style="background: {{item.accent}};"></view>
-                  <view class="theme-meta">
-                    <text class="theme-name">{{item.name}}</text>
-                    <text class="theme-desc">{{item.description}}</text>
-                  </view>
-                  <text class="theme-check" wx:if="{{currentScheduleThemeKey === item.key}}">✓</text>
-                </view>
-              </view>
-            </view>
-          </view>
-        </view>
+  <view class="content-area dashboard-content">
+    <view class="section section-tight">
+      <view class="section-heading">
+        <text class="section-title-cn">详情面板</text>
       </view>
-    </view>
-    <view class="section">
-      <view class="section-title">Academic Grades</view>
-      <view class="list-card">
-        <view class="list-row" bindtap="toggleGrades" hover-class="row-hover" hover-start-time="0" hover-stay-time="150">
-          <view class="list-content">
-            <text class="list-row-label">成绩单</text>
-            <text class="list-row-hint">历史成绩、学分与绩点统计</text>
+      <view class="detail-stack">
+        <view wx:if="{{showGrades}}" class="panel-card">
+          <view class="panel-head">
+            <view class="panel-title-wrap">
+              <text class="panel-title">成绩单</text>
+              <text class="panel-subtitle">历史成绩、学分与平均绩点</text>
+            </view>
+            <view class="panel-action" bindtap="refreshGrades">刷新</view>
           </view>
-          <view class="list-row-tag" catchtap="refreshGrades" wx:if="{{showGrades}}">刷新</view>
-          <text class="toggle-arrow" wx:else>﹀</text>
-        </view>
-        <view class="expanded-wrapper {{showGrades ? 'show' : ''}}">
-          <view class="expanded-content">
+          <view class="panel-body">
             <view wx:if="{{gradesRefreshing}}" class="updated-at-hint updated-at-loading">
               <text>刷新中...</text>
             </view>
@@ -75,11 +39,11 @@
             <block wx:elif="{{grades.summary}}">
               <view class="grades-summary">
                 <view class="summary-item">
-                  <text class="summary-label">CREDITS</text>
+                  <text class="summary-label">累计学分</text>
                   <text class="summary-value">{{grades.summary.totalCredits || 0}}</text>
                 </view>
                 <view class="summary-item">
-                  <text class="summary-label">GPA</text>
+                  <text class="summary-label">平均绩点</text>
                   <text class="summary-value highlight">{{grades.summary.averageGpa || '--'}}</text>
                 </view>
               </view>
@@ -112,27 +76,56 @@
             </view>
           </view>
         </view>
-      </view>
-    </view>
-    <view class="section">
-      <view class="section-title">Custom Courses</view>
-      <view class="list-card">
-        <view class="list-row" bindtap="toggleCustomCourses" hover-class="row-hover" hover-start-time="0" hover-stay-time="150">
-          <view class="list-content">
-            <text class="list-row-label">自定义课程</text>
-            <text class="list-row-hint">已添加 {{customCourses.length}} 门自定义排课</text>
+
+        <view wx:if="{{showECard}}" class="panel-card">
+          <view class="panel-head">
+            <view class="panel-title-wrap">
+              <text class="panel-title">校园卡</text>
+              <text class="panel-subtitle">查看余额与最近同步状态</text>
+            </view>
+            <view class="panel-action" bindtap="refreshECard">刷新</view>
           </view>
-          <view class="list-row-tag" catchtap="showAddModal" wx:if="{{showCustomCourses}}">添加</view>
-          <text class="toggle-arrow" wx:else>﹀</text>
+          <view class="panel-body">
+            <view wx:if="{{ecardRefreshing}}" class="updated-at-hint updated-at-loading">
+              <text>刷新中...</text>
+            </view>
+            <view wx:elif="{{ecardRefreshHint && !ecardLoading}}" class="updated-at-hint">
+              {{ecardRefreshHint}}
+            </view>
+            <view wx:elif="{{ecardUpdatedAtText && !ecardLoading}}" class="updated-at-hint">
+              最近更新 · {{ecardUpdatedAtText}}
+            </view>
+            <view wx:if="{{ecardLoading}}" class="skeleton-ecard">
+              <view class="skeleton-label"></view>
+              <view class="skeleton-balance"></view>
+            </view>
+            <view wx:elif="{{ecard}}" class="ecard-info">
+              <view class="ecard-balance">
+                <text class="balance-label">当前余额</text>
+                <text class="balance-value">¥{{ecard.balance}}</text>
+              </view>
+            </view>
+            <view wx:else class="empty-state-mini">
+              <text class="empty-text">暂无校园卡数据</text>
+            </view>
+          </view>
         </view>
-        <view class="expanded-wrapper {{showCustomCourses ? 'show' : ''}}">
-          <view class="expanded-content">
+
+        <view wx:if="{{showCustomCourses}}" class="panel-card">
+          <view class="panel-head">
+            <view class="panel-title-wrap">
+              <text class="panel-title">自定义课程</text>
+              <text class="panel-subtitle">已添加 {{customCourses.length}} 门自定义安排</text>
+            </view>
+            <view class="panel-action" bindtap="showAddModal">添加</view>
+          </view>
+          <view class="panel-body">
             <view wx:if="{{customCourseGroups.length > 0}}">
               <view class="cc-group" wx:for="{{customCourseGroups}}" wx:key="id" wx:for-item="group">
                 <view class="cc-group-header">
                   <view class="cc-group-title">
                     <text class="cc-group-name">{{group.name}}</text>
-                   <text class="cc-group-teacher" wx:if="{{group.teacher}}">{{group.teacher}}</text>
+                    <text class="cc-group-teacher" wx:if="{{group.teacher}}">{{group.teacher}}</text>
                   </view>
                   <view class="cc-group-delete" catchtap="deleteCustomCourseGroup" data-groupid="{{group.id}}">
                     删除
@@ -161,74 +154,110 @@
             </view>
           </view>
         </view>
-      </view>
-    </view>
-    <view class="section">
-      <view class="section-title">Campus Card</view>
-      <view class="list-card">
-        <view class="list-row" bindtap="toggleECard" hover-class="row-hover" hover-start-time="0" hover-stay-time="150">
-          <view class="list-content">
-            <text class="list-row-label">校园卡余额</text>
-            <text class="list-row-hint">一卡通实时余额查询</text>
+
+        <view wx:if="{{showScheduleThemes}}" class="panel-card">
+          <view class="panel-head">
+            <view class="panel-title-wrap">
+              <text class="panel-title">课表主题</text>
+              <text class="panel-subtitle">当前为 {{currentScheduleThemeName}}</text>
+            </view>
           </view>
-          <view class="list-row-tag" catchtap="refreshECard" wx:if="{{showECard}}">刷新</view>
-          <text class="toggle-arrow" wx:else>﹀</text>
-        </view>
-        <view class="expanded-wrapper {{showECard ? 'show' : ''}}">
-          <view class="expanded-content">
-            <view wx:if="{{ecardRefreshing}}" class="updated-at-hint updated-at-loading">
-              <text>刷新中...</text>
-            </view>
-            <view wx:elif="{{ecardRefreshHint && !ecardLoading}}" class="updated-at-hint">
-              {{ecardRefreshHint}}
-            </view>
-            <view wx:elif="{{ecardUpdatedAtText && !ecardLoading}}" class="updated-at-hint">
-              最近更新 · {{ecardUpdatedAtText}}
-            </view>
-            <view wx:if="{{ecardLoading}}" class="skeleton-ecard">
-              <view class="skeleton-label"></view>
-              <view class="skeleton-balance"></view>
-            </view>
-            <view wx:elif="{{ecard}}" class="ecard-info">
-              <view class="ecard-balance">
-                <text class="balance-label">CURRENT BALANCE</text>
-                <text class="balance-value">¥{{ecard.balance}}</text>
+          <view class="panel-body theme-panel-body">
+            <view class="theme-card">
+              <view class="theme-grid">
+                <view
+                  class="theme-option {{currentScheduleThemeKey === item.key ? 'selected' : ''}}"
+                  wx:for="{{scheduleThemeOptions}}"
+                  wx:key="key"
+                  data-key="{{item.key}}"
+                  bindtap="onScheduleThemeSelect"
+                >
+                  <view class="theme-swatch" style="background: {{item.accent}};"></view>
+                  <view class="theme-meta">
+                    <text class="theme-name">{{item.name}}</text>
+                    <text class="theme-desc">{{item.description}}</text>
+                  </view>
+                  <text class="theme-check" wx:if="{{currentScheduleThemeKey === item.key}}">✓</text>
+                </view>
               </view>
             </view>
-            <view wx:else class="empty-state-mini">
-              <text class="empty-text">暂无一卡通数据</text>
-            </view>
+          </view>
+        </view>
+
+        <view wx:if="{{!showGrades && !showECard && !showCustomCourses && !showScheduleThemes}}" class="empty-dashboard-panel">
+          <text class="empty-dashboard-title">点击上方服务卡片查看详情</text>
+          <text class="empty-dashboard-subtitle">成绩、校园卡、自定义课程和主题设置会显示在这里</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="section section-tight">
+      <view class="section-heading">
+        <text class="section-title-cn">常用服务</text>
+        <text class="section-desc">常查数据与快捷入口</text>
+      </view>
+      <view class="quick-grid">
+        <view class="quick-card {{showGrades ? 'active' : ''}}" bindtap="toggleGrades">
+          <text class="quick-title">成绩单</text>
+          <text class="quick-desc">历史成绩、学分与绩点</text>
+          <view class="quick-foot">
+            <text class="quick-meta">{{grades ? '已加载成绩数据' : '点击查看详情'}}</text>
+            <text class="quick-badge">{{showGrades ? '收起' : '打开'}}</text>
+          </view>
+        </view>
+        <view class="quick-card {{showECard ? 'active' : ''}}" bindtap="toggleECard">
+          <text class="quick-title">校园卡</text>
+          <text class="quick-desc">余额与同步状态</text>
+          <view class="quick-foot">
+            <text class="quick-meta">{{ecard ? '已载入余额信息' : '点击查看详情'}}</text>
+            <text class="quick-badge">{{showECard ? '收起' : '打开'}}</text>
+          </view>
+        </view>
+        <view class="quick-card {{showCustomCourses ? 'active' : ''}}" bindtap="toggleCustomCourses">
+          <text class="quick-title">自定义课程</text>
+          <text class="quick-desc">灵活补充课表安排</text>
+          <view class="quick-foot">
+            <text class="quick-meta">已添加 {{customCourses.length}} 门</text>
+            <text class="quick-badge">{{showCustomCourses ? '收起' : '打开'}}</text>
+          </view>
+        </view>
+        <view class="quick-card" bindtap="openCampusMap">
+          <text class="quick-title">校园地图</text>
+          <text class="quick-desc">查看东校区与西校区</text>
+          <view class="quick-foot">
+            <text class="quick-meta">快速查找位置</text>
+            <text class="quick-badge">进入</text>
+          </view>
+        </view>
+        <view class="quick-card {{showScheduleThemes ? 'active' : ''}}" bindtap="toggleScheduleThemes">
+          <text class="quick-title">课表主题</text>
+          <text class="quick-desc">切换首页色彩风格</text>
+          <view class="quick-foot">
+            <text class="quick-meta">当前 {{currentScheduleThemeName}}</text>
+            <text class="quick-badge">{{showScheduleThemes ? '收起' : '打开'}}</text>
           </view>
         </view>
       </view>
     </view>
-    <view class="section">
-      <view class="section-title">Campus Guide</view>
-      <view class="list-card">
-        <view class="list-row" bindtap="openCampusMap" hover-class="row-hover" hover-start-time="0" hover-stay-time="150">
-          <view class="list-content">
-            <text class="list-row-label">校园地图</text>
-            <text class="list-row-hint">西北校区、东校区切换查看</text>
-          </view>
-          <view class="list-row-tag">进入</view>
-        </view>
+
+    <view class="section section-tight">
+      <view class="section-heading">
+        <text class="section-title-cn">设置与账户</text>
       </view>
-    </view>
-    <view class="section">
-      <view class="section-title">Account Settings</view>
-      <view class="list-card">
-        <view class="list-row" bindtap="handleClearCache" hover-class="row-hover" hover-start-time="0" hover-stay-time="150">
-          <view class="list-content">
-            <text class="list-row-label">一键清除缓存</text>
-            <text class="list-row-hint">保留登录状态、账号信息与自定义课程</text>
+      <view class="settings-card">
+        <view class="setting-row" bindtap="handleClearCache" hover-class="row-hover" hover-start-time="0" hover-stay-time="150">
+          <view class="setting-text-group">
+            <text class="setting-title">清除缓存</text>
+            <text class="setting-hint">保留登录状态、账号信息与自定义课程</text>
           </view>
-          <view class="list-row-tag">清除</view>
+          <view class="setting-badge">清除</view>
         </view>
-        <view class="list-row" bindtap="handleLogout" hover-class="row-hover" hover-start-time="0" hover-stay-time="150">
-          <view class="list-content">
-            <text class="list-row-label danger-text">退出登录</text>
-            <text class="list-row-hint">清除本地缓存并返回登录页</text>
+        <view class="setting-row" bindtap="handleLogout" hover-class="row-hover" hover-start-time="0" hover-stay-time="150">
+          <view class="setting-text-group">
+            <text class="setting-title danger-text">退出登录</text>
+            <text class="setting-hint">清除本地会话并返回登录页</text>
           </view>
+          <view class="setting-badge danger-badge">退出</view>
         </view>
       </view>
     </view>

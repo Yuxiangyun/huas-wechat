@@ -64,7 +64,7 @@ function formatRemainText(remainMinutes: number): string {
 
 Page({
   data: {
-    dataSources: ['默认', '备用'],
+    dataSources: ['教务', '门户'],
     currentDataSourceIndex: 0,
     currentWeek: '未知',
     currentDate: '',

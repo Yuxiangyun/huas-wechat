@@ -7,9 +7,9 @@
       </view>
       <view class="subtitle-row">
         <view class="subtitle" wx:if="{{currentDataSourceIndex === 0}}">
-          WEEK · {{currentWeek}}
+          周次 · {{currentWeek}}
         </view>
-        <view class="subtitle" wx:else>DATE · {{selectedDate}}</view>
+        <view class="subtitle" wx:else>日期 · {{selectedDate}}</view>
         <picker class="picker-trigger" mode="selector" range="{{dataSources}}" value="{{currentDataSourceIndex}}" bindchange="onDataSourceChange">
           <view class="source-picker">
             <text>{{dataSources[currentDataSourceIndex]}}</text>
@@ -97,25 +97,25 @@
       </view>
       <view class="modal-body">
         <view class="detail-item">
-          <text class="detail-label">COURSE</text>
+          <text class="detail-label">课程</text>
           <text class="detail-value bold-text">{{detailCourse.name}}</text>
         </view>
         <view class="detail-item">
-          <text class="detail-label">LOCATION</text>
+          <text class="detail-label">地点</text>
           <text class="detail-value">{{detailCourse.location || '未安排'}}</text>
         </view>
         <view class="detail-item">
-          <text class="detail-label">TEACHER</text>
+          <text class="detail-label">教师</text>
           <text class="detail-value">{{detailCourse.teacher || '未知'}}</text>
         </view>
         <view class="detail-item">
-          <text class="detail-label">TIME</text>
+          <text class="detail-label">时间</text>
           <text class="detail-value">
             周{{detailCourse.dayStr}} 第{{detailCourse.exactStart}}-{{detailCourse.exactEnd}}节
           </text>
         </view>
         <view class="detail-item">
-          <text class="detail-label">WEEKS</text>
+          <text class="detail-label">周次</text>
           <text class="detail-value">
             {{detailCourse.weeksText || detailCourse.weekStr || '未知'}}
           </text>
