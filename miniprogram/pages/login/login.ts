@@ -1,6 +1,7 @@
 import { api, PublicAnnouncement, UserInfo } from '../../utils/api';
 import { fetchPublicAnnouncements, hasUnreadAnnouncements, markAnnouncementsAsRead } from '../../utils/announcements';
 import { createDefaultShareContent, createShareAppMessage, createShareTimeline } from '../../utils/share';
+import { activateSession } from '../../utils/session';
 import { storage } from '../../utils/storage';
 const CAPTCHA_REQUIRED_MSG = '学校系统要求补充验证码。这通常是密码或学号输错后触发，请先核对密码，再输入验证码登录。';
 const CREDENTIAL_ERROR_MSG = '学号或密码错误，请核对后重新登录。';
@@ -137,7 +138,6 @@ Page({
       storage.clearAll();
     }
 
-    storage.saveToken(token);
     storage.saveLastLoginUsername(username);
     if (user) {
       storage.saveUserInfo(user);
@@ -153,9 +153,7 @@ Page({
       storage.setRememberPassword(false);
     }
 
-    const app = getApp<IAppOption>();
-    app.globalData.token = token;
-    app.globalData.isLoggedIn = true;
+    activateSession(token);
 
     wx.showToast({
       title: '登录成功',

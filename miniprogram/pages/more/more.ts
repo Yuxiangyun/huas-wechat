@@ -1,12 +1,15 @@
 // pages/more/more.ts - 更多页面
+import { ECARD_CACHE_TTL_MS, GRADES_CACHE_TTL_MS } from '../../constants/cache';
 import { api, UserInfo, ECardInfo, GradeList, GradeItem } from '../../utils/api';
 import { readTimedCache, writeTimedCache } from '../../utils/local-cache';
+import { buildCachedMetaDisplayState, buildMetaDisplayState } from '../../utils/meta-display';
 import { createCoverShareContent, createShareAppMessage, createShareTimeline } from '../../utils/share';
+import { clearAllSessionData, ensureLoggedIn, redirectToLogin } from '../../utils/session';
 import { storage } from '../../utils/storage';
 import { customCourseStorage, formatWeeks } from '../../utils/custom-course/index';
 import { buildThemeStyle, DEFAULT_SCHEDULE_THEME_KEY, SCHEDULE_THEME_OPTIONS, getScheduleThemeByKey } from '../../utils/theme';
 import { setSelectedTab } from '../../utils/tab-bar';
-import { resolveRefreshHint, resolveUpdatedAtText, triggerLightHaptic } from '../../utils/util';
+import { triggerLightHaptic } from '../../utils/util';
 import type { CustomCourse } from '../../utils/custom-course/index';
 
 interface TermGrades {
@@ -31,8 +34,6 @@ interface GroupedCustomCourse {
     items: DisplayCustomCourse[];
 }
 
-const GRADES_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
-const ECARD_CACHE_TTL_MS = 5 * 60 * 1000;
 const DEFAULT_SCHEDULE_THEME = getScheduleThemeByKey(DEFAULT_SCHEDULE_THEME_KEY);
 
 function showApiErrorToast(msg: string | undefined, fallback: string): void {
@@ -83,8 +84,7 @@ Page({
     onShow() {
         setSelectedTab(this, 1);
 
-        if (!storage.getToken()) {
-            wx.reLaunch({ url: '/pages/login/login' });
+        if (!ensureLoggedIn()) {
             return;
         }
 
@@ -135,33 +135,33 @@ Page({
 
     async fetchGrades(forceRefresh = false) {
         this.setData({ gradesLoading: true });
+        let hasLocalCacheSnapshot = false;
         try {
             if (!forceRefresh) {
                 const cachedGrades = readTimedCache<GradeList>('cache_grades', GRADES_CACHE_TTL_MS);
                 const cachedGradesByTerm = readTimedCache<TermGrades[]>('cache_grades_by_term', GRADES_CACHE_TTL_MS);
                 if (cachedGrades && cachedGradesByTerm) {
                     console.log('✅ [Cache] 成绩：命中本地缓存（6小时）');
+                    const metaDisplay = buildCachedMetaDisplayState(cachedGrades);
                     const nextData: Record<string, unknown> = {
                         grades: cachedGrades.data,
                         gradesByTerm: cachedGradesByTerm.data,
                         gradesLoading: false,
                         gradesRefreshing: false,
-                        gradesRefreshHint: cachedGrades.refreshHint || '',
+                        gradesRefreshHint: metaDisplay.refreshHint,
+                        gradesUpdatedAtText: metaDisplay.updatedAtText,
                     };
-                    if (cachedGrades.refreshHint) {
-                        nextData.gradesUpdatedAtText = '';
-                    } else if (cachedGrades.updatedAtText) {
-                        nextData.gradesUpdatedAtText = cachedGrades.updatedAtText;
-                    } else {
-                        nextData.gradesUpdatedAtText = '';
-                    }
                     this.setData(nextData);
-                    return;
+                    hasLocalCacheSnapshot = true;
                 }
             }
 
             console.log('🌐 [Network] 获取成绩数据...');
-            this.setData({ gradesRefreshing: true, gradesRefreshHint: '' });
+            this.setData(
+                hasLocalCacheSnapshot
+                    ? { gradesRefreshing: true }
+                    : { gradesRefreshing: true, gradesRefreshHint: '' },
+            );
             const res = await api.getGrades({ refresh: forceRefresh });
             if ((res.code === 0 || res.code === 200) && res.data) {
                 const grades = res.data;
@@ -177,24 +177,26 @@ Page({
                     .sort((a, b) => b.localeCompare(a))
                     .map(term => ({ term, items: termMap[term] }));
 
-                const gradesUpdatedAtText = resolveUpdatedAtText(res.meta?.updated_at);
-                const gradesRefreshHint = resolveRefreshHint(res.meta, gradesUpdatedAtText)
-                    || (gradesUpdatedAtText ? '' : '已更新');
+                const metaDisplay = buildMetaDisplayState(res.meta, { fallbackTime: Date.now() });
                 const nextData: Record<string, unknown> = {
                     grades,
                     gradesByTerm,
-                    gradesUpdatedAtText: gradesRefreshHint ? '' : (gradesUpdatedAtText || ''),
-                    gradesRefreshHint,
+                    gradesUpdatedAtText: metaDisplay.updatedAtText,
+                    gradesRefreshHint: metaDisplay.refreshHint,
                 };
                 this.setData(nextData);
-                writeTimedCache('cache_grades', grades, gradesUpdatedAtText, gradesRefreshHint);
-                writeTimedCache('cache_grades_by_term', gradesByTerm, gradesUpdatedAtText, gradesRefreshHint);
+                writeTimedCache('cache_grades', grades, metaDisplay.updatedAtText, metaDisplay.refreshHint);
+                writeTimedCache('cache_grades_by_term', gradesByTerm, metaDisplay.updatedAtText, metaDisplay.refreshHint);
             } else {
-                this.setData({ grades: null, gradesByTerm: [], gradesUpdatedAtText: '', gradesRefreshHint: '' });
+                if (!hasLocalCacheSnapshot) {
+                    this.setData({ grades: null, gradesByTerm: [], gradesUpdatedAtText: '', gradesRefreshHint: '' });
+                }
                 showApiErrorToast(res.msg, '获取成绩失败');
             }
         } catch (err: any) {
-            this.setData({ grades: null, gradesByTerm: [], gradesUpdatedAtText: '', gradesRefreshHint: '' });
+            if (!hasLocalCacheSnapshot) {
+                this.setData({ grades: null, gradesByTerm: [], gradesUpdatedAtText: '', gradesRefreshHint: '' });
+            }
             showApiErrorToast(err?.msg, '获取成绩失败');
         } finally {
             this.setData({ gradesLoading: false, gradesRefreshing: false });
@@ -218,49 +220,51 @@ Page({
 
     async fetchECard(forceRefresh = false) {
         this.setData({ ecardLoading: true });
+        let hasLocalCacheSnapshot = false;
         try {
             if (!forceRefresh) {
                 const cachedECard = readTimedCache<ECardInfo>('cache_ecard', ECARD_CACHE_TTL_MS);
                 if (cachedECard) {
                     console.log('✅ [Cache] 一卡通：命中本地缓存（5分钟）');
+                    const metaDisplay = buildCachedMetaDisplayState(cachedECard);
                     const nextData: Record<string, unknown> = {
                         ecard: cachedECard.data,
                         ecardLoading: false,
                         ecardRefreshing: false,
-                        ecardRefreshHint: cachedECard.refreshHint || '',
+                        ecardRefreshHint: metaDisplay.refreshHint,
+                        ecardUpdatedAtText: metaDisplay.updatedAtText,
                     };
-                    if (cachedECard.refreshHint) {
-                        nextData.ecardUpdatedAtText = '';
-                    } else if (cachedECard.updatedAtText) {
-                        nextData.ecardUpdatedAtText = cachedECard.updatedAtText;
-                    } else {
-                        nextData.ecardUpdatedAtText = '';
-                    }
                     this.setData(nextData);
-                    return;
+                    hasLocalCacheSnapshot = true;
                 }
             }
 
             console.log('🌐 [Network] 获取一卡通数据...');
-            this.setData({ ecardRefreshing: true, ecardRefreshHint: '' });
+            this.setData(
+                hasLocalCacheSnapshot
+                    ? { ecardRefreshing: true }
+                    : { ecardRefreshing: true, ecardRefreshHint: '' },
+            );
             const res = await api.getECard(forceRefresh);
             if ((res.code === 0 || res.code === 200) && res.data) {
-                const ecardUpdatedAtText = resolveUpdatedAtText(res.meta?.updated_at);
-                const ecardRefreshHint = resolveRefreshHint(res.meta, ecardUpdatedAtText)
-                    || (ecardUpdatedAtText ? '' : '已更新');
+                const metaDisplay = buildMetaDisplayState(res.meta, { fallbackTime: Date.now() });
                 const nextData: Record<string, unknown> = {
                     ecard: res.data,
-                    ecardUpdatedAtText: ecardRefreshHint ? '' : (ecardUpdatedAtText || ''),
-                    ecardRefreshHint,
+                    ecardUpdatedAtText: metaDisplay.updatedAtText,
+                    ecardRefreshHint: metaDisplay.refreshHint,
                 };
                 this.setData(nextData);
-                writeTimedCache('cache_ecard', res.data, ecardUpdatedAtText, ecardRefreshHint);
+                writeTimedCache('cache_ecard', res.data, metaDisplay.updatedAtText, metaDisplay.refreshHint);
             } else {
-                this.setData({ ecard: null, ecardUpdatedAtText: '', ecardRefreshHint: '' });
+                if (!hasLocalCacheSnapshot) {
+                    this.setData({ ecard: null, ecardUpdatedAtText: '', ecardRefreshHint: '' });
+                }
                 showApiErrorToast(res.msg, '获取一卡通失败');
             }
         } catch (err: any) {
-            this.setData({ ecard: null, ecardUpdatedAtText: '', ecardRefreshHint: '' });
+            if (!hasLocalCacheSnapshot) {
+                this.setData({ ecard: null, ecardUpdatedAtText: '', ecardRefreshHint: '' });
+            }
             showApiErrorToast(err?.msg, '获取一卡通失败');
         } finally {
             this.setData({ ecardLoading: false, ecardRefreshing: false });
@@ -298,6 +302,13 @@ Page({
             currentScheduleThemeKey: theme.key,
             currentScheduleThemeName: theme.name,
             themeStyle: buildThemeStyle(theme),
+        });
+    },
+
+    openCampusMap() {
+        triggerLightHaptic();
+        wx.navigateTo({
+            url: '/pages/campus-map/campus-map',
         });
     },
 
@@ -543,12 +554,9 @@ Page({
             title: '提示', content: '确定要退出登录吗？',
             success: (res) => {
                 if (res.confirm) {
-                    storage.clearAll();
-                    const app = getApp<IAppOption>();
-                    app.globalData.token = '';
-                    app.globalData.isLoggedIn = false;
+                    clearAllSessionData();
                     wx.showToast({ title: '已退出登录', icon: 'success', duration: 1500 });
-                    setTimeout(() => { wx.reLaunch({ url: '/pages/login/login?logout=true' }); }, 1500);
+                    setTimeout(() => { redirectToLogin({ logout: true }); }, 1500);
                 }
             },
         });

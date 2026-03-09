@@ -203,6 +203,18 @@
       </view>
     </view>
     <view class="section">
+      <view class="section-title">Campus Guide</view>
+      <view class="list-card">
+        <view class="list-row" bindtap="openCampusMap" hover-class="row-hover" hover-start-time="0" hover-stay-time="150">
+          <view class="list-content">
+            <text class="list-row-label">校园地图</text>
+            <text class="list-row-hint">西北校区、东校区切换查看</text>
+          </view>
+          <view class="list-row-tag">进入</view>
+        </view>
+      </view>
+    </view>
+    <view class="section">
       <view class="section-title">Account Settings</view>
       <view class="list-card">
         <view class="list-row" bindtap="handleClearCache" hover-class="row-hover" hover-start-time="0" hover-stay-time="150">

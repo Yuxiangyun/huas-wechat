@@ -3,6 +3,7 @@
     "pages/login/login",
     "pages/index/index",
     "pages/more/more",
+    "pages/campus-map/campus-map",
     "pages/about/about"
   ],
   "window": {

@@ -1,9 +1,11 @@
+import { handleAuthFailure } from './session';
 import { storage } from './storage';
 import { API_BASE_URL } from './config';
 
 export interface ApiMeta {
   cached?: boolean;
   source?: string;
+  cache_time?: string;
   updated_at?: string;
   expires_at?: string;
   stale?: boolean;
@@ -313,21 +315,6 @@ function mapEnvelopeToResponse<T>(statusCode: number, body: unknown): ApiRespons
     msg: '请求失败',
     data: null,
   };
-}
-
-function handleAuthFailure(code: number): void {
-  if (code !== 4001 && code !== 3003) return;
-
-  storage.clearToken();
-  storage.removeUserInfo();
-
-  const pages = getCurrentPages();
-  const current = pages[pages.length - 1];
-  if (current && current.route === 'pages/login/login') {
-    return;
-  }
-
-  wx.reLaunch({ url: '/pages/login/login?sessionExpired=true' });
 }
 
 function request<T>(options: RequestOptions): Promise<ApiResponse<T>> {

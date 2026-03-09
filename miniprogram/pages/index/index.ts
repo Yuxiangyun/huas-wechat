@@ -1,12 +1,16 @@
 // pages/index/index.ts - 课程表首页
+import { LOCAL_SCHEDULE_CACHE_TTL_MS } from '../../constants/cache';
 import { api, Course, PublicAnnouncement } from '../../utils/api';
 import { fetchPublicAnnouncements, hasUnreadAnnouncements, markAnnouncementsAsRead } from '../../utils/announcements';
+import { buildCachedMetaDisplayState, buildMetaDisplayState } from '../../utils/meta-display';
 import { createDefaultShareContent, createShareAppMessage } from '../../utils/share';
+import { formatBeijingToday, formatDate, getMonday } from '../../utils/schedule-date';
+import { ensureLoggedIn } from '../../utils/session';
 import { storage, setStorageWithAutoCleanup } from '../../utils/storage';
 import { customCourseStorage, parseWeekNum, formatWeeks } from '../../utils/custom-course/index';
 import { buildThemeStyle, DEFAULT_SCHEDULE_THEME_KEY, getScheduleThemeByKey } from '../../utils/theme';
 import { setSelectedTab } from '../../utils/tab-bar';
-import { getBeijingNow, resolveRefreshHint, resolveUpdatedAtText, triggerLightHaptic } from '../../utils/util';
+import { getBeijingNow, triggerLightHaptic } from '../../utils/util';
 
 interface DisplayCourse extends Course {
   id: string;
@@ -41,29 +45,6 @@ const SECTION_TIME_RANGES: SectionTimeRange[] = [
 ];
 
 let timeLineTimer: number | null = null;
-function formatDate(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function formatBeijingToday(): string {
-  const now = getBeijingNow();
-  const year = now.getUTCFullYear();
-  const month = String(now.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(now.getUTCDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function getMonday(date: Date): Date {
-  const d = new Date(date);
-  const day = d.getDay() || 7;
-  d.setDate(d.getDate() - day + 1);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
 function getHashCode(str: string): number {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -129,8 +110,7 @@ Page({
 
   onShow() {
     setSelectedTab(this, 0);
-    if (!storage.getToken()) {
-      wx.reLaunch({ url: '/pages/login/login' });
+    if (!ensureLoggedIn()) {
       return;
     }
 
@@ -290,9 +270,10 @@ Page({
 
   async fetchSchedule(forceRefresh = false) {
     const { selectedDate, allCourses, currentDataSourceIndex } = this.data;
-    const previousUpdatedAtText = this.data.scheduleUpdatedAtText;
-    const previousRefreshHint = this.data.scheduleRefreshHint;
+    let restoreUpdatedAtText = this.data.scheduleUpdatedAtText;
+    let restoreRefreshHint = this.data.scheduleRefreshHint;
     let shouldRestoreScheduleMeta = true;
+    let hasLocalCacheSnapshot = false;
     if (allCourses.length === 0) {
       this.setData({ loading: true, scheduleUpdatedAtText: '', scheduleRefreshHint: '' });
     }
@@ -302,7 +283,6 @@ Page({
     // 垃圾回收：清理超过 24 小时的课表旧缓存，防止 10MB 空间耗尽（Storage Leak 修复）
     try {
       const resList = wx.getStorageInfoSync();
-      const ONE_DAY_MS = 24 * 60 * 60 * 1000;
       resList.keys.forEach(key => {
         if (key.startsWith('cache_schedule_')) {
           if (customCourseChanged) {
@@ -310,7 +290,7 @@ Page({
             return;
           }
           const item = wx.getStorageSync(key);
-          if (item && item.timestamp && Date.now() - item.timestamp > ONE_DAY_MS) {
+          if (item && item.timestamp && Date.now() - item.timestamp > LOCAL_SCHEDULE_CACHE_TTL_MS) {
             wx.removeStorageSync(key);
             console.log(`🗑️ [GC] 清理过期课表缓存：${key}`);
           }
@@ -334,30 +314,36 @@ Page({
           updatedAtText?: string;
           refreshHint?: string;
         };
-        const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-        if (Date.now() - timestamp < ONE_DAY_MS) {
+        if (Date.now() - timestamp < LOCAL_SCHEDULE_CACHE_TTL_MS) {
           if ((typeof updatedAtText === 'string' && updatedAtText) || (typeof refreshHint === 'string' && refreshHint)) {
             console.log(`✅ [Cache] 课程表(${selectedDate})：命中24小时本地缓存`);
+            const metaDisplay = buildCachedMetaDisplayState({ updatedAtText, refreshHint });
             this.setData({
               currentWeek: currentDataSourceIndex === 1 ? '' : (data.week || '未知'),
               allCourses: Array.isArray(data.courses) ? data.courses : [],
               scheduleMessage: data.message || '',
-              scheduleUpdatedAtText: refreshHint ? '' : (updatedAtText || ''),
-              scheduleRefreshHint: refreshHint || '',
+              scheduleUpdatedAtText: metaDisplay.updatedAtText,
+              scheduleRefreshHint: metaDisplay.refreshHint,
               loading: false
             });
             this.processCourses();
-            shouldRestoreScheduleMeta = false;
-            return;
+            restoreUpdatedAtText = metaDisplay.updatedAtText;
+            restoreRefreshHint = metaDisplay.refreshHint;
+            hasLocalCacheSnapshot = true;
+          } else {
+            console.log(`ℹ️ [Cache] 课程表(${selectedDate})：命中旧缓存但缺少更新时间，回源补齐`);
           }
-          console.log(`ℹ️ [Cache] 课程表(${selectedDate})：命中旧缓存但缺少更新时间，回源补齐`);
         } else {
           console.log(`⏳ [Cache] 课程表(${selectedDate})：缓存已过期，时长：${(Date.now() - timestamp) / 1000 / 60 / 60} 小时`);
         }
       }
 
       console.log(`🌐 [Network] 课程表(${selectedDate})：拉取新网路数据...`);
-      this.setData({ scheduleRefreshing: true, scheduleRefreshHint: '' });
+      this.setData(
+        hasLocalCacheSnapshot
+          ? { scheduleRefreshing: true }
+          : { scheduleRefreshing: true, scheduleRefreshHint: '' },
+      );
       let res;
       if (currentDataSourceIndex === 1) {
         const selectedDateObj = new Date(selectedDate.replace(/-/g, '/'));
@@ -370,9 +356,7 @@ Page({
       }
 
       if ((res.code === 0 || res.code === 200) && res.data) {
-        const scheduleUpdatedAtText = resolveUpdatedAtText(res.meta?.updated_at);
-        const scheduleRefreshHint = resolveRefreshHint(res.meta, scheduleUpdatedAtText)
-          || (scheduleUpdatedAtText ? '' : '已更新');
+        const metaDisplay = buildMetaDisplayState(res.meta, { fallbackTime: Date.now() });
         const dataToCache = {
           week: res.data.week,
           courses: res.data.courses,
@@ -381,16 +365,16 @@ Page({
         setStorageWithAutoCleanup(cacheKey, {
           timestamp: Date.now(),
           data: dataToCache,
-          ...(scheduleUpdatedAtText ? { updatedAtText: scheduleUpdatedAtText } : {}),
-          ...(scheduleRefreshHint ? { refreshHint: scheduleRefreshHint } : {}),
+          ...(metaDisplay.updatedAtText ? { updatedAtText: metaDisplay.updatedAtText } : {}),
+          ...(metaDisplay.refreshHint ? { refreshHint: metaDisplay.refreshHint } : {}),
         });
 
         const nextData: Record<string, unknown> = {
           currentWeek: currentDataSourceIndex === 1 ? '' : (res.data.week || '未知'),
           allCourses: Array.isArray(res.data.courses) ? res.data.courses : [],
           scheduleMessage: res.data.message || '',
-          scheduleUpdatedAtText: scheduleRefreshHint ? '' : (scheduleUpdatedAtText || ''),
-          scheduleRefreshHint,
+          scheduleUpdatedAtText: metaDisplay.updatedAtText,
+          scheduleRefreshHint: metaDisplay.refreshHint,
         };
         this.setData(nextData);
         this.processCourses();
@@ -404,8 +388,8 @@ Page({
     } finally {
       if (shouldRestoreScheduleMeta) {
         this.setData({
-          scheduleUpdatedAtText: previousUpdatedAtText,
-          scheduleRefreshHint: previousRefreshHint,
+          scheduleUpdatedAtText: restoreUpdatedAtText,
+          scheduleRefreshHint: restoreRefreshHint,
         });
       }
       this.setData({ loading: false, scheduleRefreshing: false });

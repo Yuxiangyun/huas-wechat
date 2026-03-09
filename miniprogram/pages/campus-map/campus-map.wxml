@@ -1,0 +1,65 @@
+<view class="campus-map-page" style="{{themeStyle}}">
+  <view class="map-stage">
+    <movable-area
+      class="map-area"
+      style="width: {{mapAreaWidthPx}}px; height: {{mapAreaHeightPx}}px;"
+    >
+      <movable-view
+        class="map-view"
+        style="width: {{mapWidthPx}}px; height: {{mapHeightPx}}px;"
+        direction="all"
+        inertia
+        scale
+        scale-min="{{minScale}}"
+        scale-max="{{maxScale}}"
+        scale-value="{{mapScale}}"
+        animation="{{useMapAnimation}}"
+        x="{{mapX}}"
+        y="{{mapY}}"
+        bindchange="onMapChange"
+        bindscale="onMapScale"
+      >
+        <view class="map-surface">
+          <image
+            class="map-image {{mapImageStatus === 'ready' ? 'visible' : ''}}"
+            src="{{mapImageSrc}}"
+            mode="aspectFit"
+            bindload="onMapImageLoad"
+            binderror="onMapImageError"
+          />
+          <view class="map-fallback {{mapImageStatus === 'ready' ? 'hidden' : ''}}">
+            <view class="map-fallback-grid"></view>
+            <view class="map-fallback-copy">
+              <text class="map-fallback-title">校园底图待接入</text>
+              <text class="map-fallback-text">当前已搭好交互层，放入原图后会自动替换。</text>
+              <text class="map-fallback-path">{{imageExpectedPath}}</text>
+            </view>
+          </view>
+          <view class="map-grid-overlay"></view>
+        </view>
+      </movable-view>
+    </movable-area>
+
+    <view class="map-topbar">
+      <view class="map-switcher">
+        <view
+          wx:for="{{mapOptions}}"
+          wx:key="id"
+          class="map-switcher-item {{activeMapId === item.id ? 'active' : ''}}"
+          catchtap="switchCampusMap"
+          data-id="{{item.id}}"
+        >
+          {{item.shortName}}
+        </view>
+      </view>
+    </view>
+
+    <view class="map-actions">
+      <view class="map-action-btn" catchtap="resetViewport">回到全图</view>
+    </view>
+
+    <view class="map-status" wx:if="{{mapImageStatus === 'error'}}">
+      地图原图未找到，当前展示交互骨架。
+    </view>
+  </view>
+</view>
