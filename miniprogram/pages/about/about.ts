@@ -3,6 +3,7 @@ import { createDefaultShareContent, createShareAppMessage, createShareTimeline }
 import { buildThemeStyle, DEFAULT_SCHEDULE_THEME_KEY, getScheduleThemeByKey, type ScheduleThemeKey } from '../../utils/theme';
 import { setSelectedTab } from '../../utils/tab-bar';
 import { getBeijingHour } from '../../utils/util';
+import { ABOUT_CONTRIBUTORS_CONFIG } from '../../utils/config';
 
 Page({
   data: {
@@ -20,6 +21,9 @@ Page({
       '您的密码仅保存在本地设备',
       '数据来源于学校教务系统',
     ],
+    contributorsExpanded: false,
+    contributorsNote: ABOUT_CONTRIBUTORS_CONFIG.note,
+    contributors: ABOUT_CONTRIBUTORS_CONFIG.list,
   },
 
   onShow() {
@@ -64,6 +68,12 @@ Page({
           this.setData({ copyTagText: '复制' });
         }, 1500);
       },
+    });
+  },
+
+  toggleContributors() {
+    this.setData({
+      contributorsExpanded: !this.data.contributorsExpanded,
     });
   },
 

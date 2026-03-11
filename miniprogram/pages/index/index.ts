@@ -2,6 +2,7 @@
 import { LOCAL_SCHEDULE_CACHE_TTL_MS } from '../../constants/cache';
 import { api, Course, PublicAnnouncement } from '../../utils/api';
 import { fetchPublicAnnouncements, hasUnreadAnnouncements, markAnnouncementsAsRead } from '../../utils/announcements';
+import { PUBLIC_ACCOUNT_CONFIG, hasPublicAccountConfig } from '../../utils/config';
 import { buildCachedMetaDisplayState, buildMetaDisplayState } from '../../utils/meta-display';
 import { createDefaultShareContent, createShareAppMessage } from '../../utils/share';
 import { formatBeijingToday, formatDate, getMonday } from '../../utils/schedule-date';
@@ -43,6 +44,7 @@ const SECTION_TIME_RANGES: SectionTimeRange[] = [
   { start: 990, end: 1090, breakEnd: 1140 },
   { start: 1140, end: 1240, breakEnd: 1240 },
 ];
+const PUBLIC_ACCOUNT_BUTTON_TEXT = '拍好饭/树洞';
 
 let timeLineTimer: number | null = null;
 function getHashCode(str: string): number {
@@ -96,6 +98,8 @@ Page({
     timeLineCountdown: '',
     currentScheduleThemeKey: DEFAULT_SCHEDULE_THEME_KEY,
     themeStyle: buildThemeStyle(getScheduleThemeByKey(DEFAULT_SCHEDULE_THEME_KEY)),
+    showPublicAccountButton: hasPublicAccountConfig(),
+    publicAccountButtonText: PUBLIC_ACCOUNT_BUTTON_TEXT,
     // 新增：动态计算的高度数据
     sectionHeight: 180,
     periodHeight: 90
@@ -482,6 +486,48 @@ Page({
   handleRefresh() {
     triggerLightHaptic();
     this.fetchSchedule(true);
+  },
+  openPublicAccount() {
+    triggerLightHaptic();
+
+    if (!hasPublicAccountConfig()) {
+      wx.showToast({ title: '未配置公众号', icon: 'none' });
+      return;
+    }
+
+    const username = PUBLIC_ACCOUNT_CONFIG.wechatId.trim();
+    const wxAny = wx as any;
+
+    if (typeof wxAny.openOfficialAccountChat !== 'function') {
+      wx.showModal({
+        title: '当前版本不支持',
+        content: `当前微信版本无法直接拉起公众号，可复制微信号 ${username} 后前往微信搜索。`,
+        confirmText: '复制微信号',
+        success: ({ confirm }) => {
+          if (confirm) {
+            wx.setClipboardData({ data: username });
+          }
+        },
+      });
+      return;
+    }
+
+    wxAny.openOfficialAccountChat({
+      username,
+      fail: (err: { errMsg?: string }) => {
+        console.error('拉起公众号失败:', err);
+        wx.showModal({
+          title: '拉起失败',
+          content: `暂时无法直接打开公众号，可复制微信号 ${username} 后前往微信搜索。`,
+          confirmText: '复制微信号',
+          success: ({ confirm }: { confirm: boolean }) => {
+            if (confirm) {
+              wx.setClipboardData({ data: username });
+            }
+          },
+        });
+      },
+    });
   },
   prevWeek() {
     triggerLightHaptic();

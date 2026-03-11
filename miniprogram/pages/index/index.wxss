@@ -60,9 +60,15 @@ page {
 
   display: flex;
 
+  flex-wrap: wrap;
+
+  justify-content: flex-end;
+
   gap: 16rpx;
 
   flex-shrink: 0;
+
+  width: 272rpx;
 
   position: relative;
 
@@ -288,13 +294,31 @@ page {
 
   font-weight: 700;
 
-  padding: 12rpx 36rpx;
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  width: 128rpx;
+
+  min-height: 72rpx;
+
+  padding: 0 24rpx;
 
   border-radius: 100rpx;
 
   letter-spacing: 1rpx;
 
   margin-bottom: 8rpx;
+
+  box-sizing: border-box;
+
+  text-align: center;
+
+  line-height: 1;
+
+  white-space: nowrap;
 
 }
 
@@ -319,6 +343,12 @@ page {
   border-radius: 50%;
 
   background: #ff4d4f;
+
+}
+
+.public-account-pill {
+
+  width: 272rpx;
 
 }
 

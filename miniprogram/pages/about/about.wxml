@@ -38,6 +38,39 @@
       </view>
     </view>
     <view class="section">
+      <view class="section-title">Contributors</view>
+      <view class="list-card contributors-card">
+        <view
+          class="contributor-summary contributor-summary-toggle {{contributorsExpanded ? 'expanded' : ''}}"
+          bindtap="toggleContributors"
+          hover-class="row-hover"
+        >
+          <view class="contributor-summary-main">
+            <text class="contributor-summary-count">{{contributors.length}}</text>
+            <view class="contributor-summary-copy">
+              <text class="contributor-summary-label">位贡献者</text>
+              <text class="contributor-summary-note">{{contributorsNote}}</text>
+            </view>
+          </view>
+          <view class="contributor-summary-action">
+            <text class="list-row-tag contributor-toggle-tag">{{contributorsExpanded ? '收起' : '展开'}}</text>
+            <text class="contributor-toggle-arrow {{contributorsExpanded ? 'expanded' : ''}}">›</text>
+          </view>
+        </view>
+        <view wx:if="{{contributorsExpanded}}" class="contributor-row" wx:for="{{contributors}}" wx:key="name">
+          <view class="contributor-avatar">{{item.initial}}</view>
+          <view class="contributor-content">
+            <view class="contributor-head">
+              <text class="contributor-name">{{item.name}}</text>
+              <text class="contributor-role">{{item.role}}</text>
+            </view>
+            <text class="contributor-desc">{{item.desc}}</text>
+          </view>
+          <view class="list-row-tag contributor-tag">{{item.tag}}</view>
+        </view>
+      </view>
+    </view>
+    <view class="section">
       <view class="section-title">Instructions</view>
       <view class="list-card">
         <view class="list-row" wx:for="{{instructions}}" wx:key="*this">

@@ -63,11 +63,11 @@
         <view wx:else class="announcement-list">
           <view wx:for="{{announcements}}" wx:key="id" class="announcement-item type-{{item.type}}">
             <view class="announcement-item-header">
-              <text class="announcement-item-title">{{item.title}}</text>
+              <text class="announcement-item-title" user-select="true">{{item.title}}</text>
               <text class="announcement-item-date">{{item.date}}</text>
             </view>
             <view class="announcement-item-content">
-              <text>{{item.content}}</text>
+              <text user-select="true">{{item.content}}</text>
             </view>
           </view>
         </view>

@@ -5,6 +5,7 @@ import { readTimedCache, writeTimedCache } from '../../utils/local-cache';
 import { buildCachedMetaDisplayState, buildMetaDisplayState } from '../../utils/meta-display';
 import { createCoverShareContent, createShareAppMessage, createShareTimeline } from '../../utils/share';
 import { clearAllSessionData, ensureLoggedIn, redirectToLogin } from '../../utils/session';
+import { PUBLIC_ACCOUNT_CONFIG, hasPublicAccountConfig, type PublicAccountConfig } from '../../utils/config';
 import { storage } from '../../utils/storage';
 import { customCourseStorage, formatWeeks } from '../../utils/custom-course/index';
 import { buildThemeStyle, DEFAULT_SCHEDULE_THEME_KEY, SCHEDULE_THEME_OPTIONS, getScheduleThemeByKey } from '../../utils/theme';
@@ -21,6 +22,7 @@ const DAY_NAMES = ['一', '二', '三', '四', '五', '六', '日'];
 const DAY_OPTIONS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 // 生成 1 到 10 节的选项
 const SECTION_NUMBERS = Array.from({ length: 10 }, (_, i) => `${i + 1}`);
+const OFFICIAL_ACCOUNT_SUPPORTED_SCENES = new Set([1011, 1017, 1025, 1047, 1124]);
 
 interface DisplayCustomCourse extends CustomCourse {
     dayStr: string;
@@ -34,13 +36,45 @@ interface GroupedCustomCourse {
     items: DisplayCustomCourse[];
 }
 
+interface PublicAccountViewModel extends PublicAccountConfig {
+    enabled: boolean;
+}
+
 const DEFAULT_SCHEDULE_THEME = getScheduleThemeByKey(DEFAULT_SCHEDULE_THEME_KEY);
+const DEFAULT_PUBLIC_ACCOUNT: PublicAccountViewModel = {
+    enabled: false,
+    name: '',
+    wechatId: '',
+    intro: '',
+};
 
 function showApiErrorToast(msg: string | undefined, fallback: string): void {
     wx.showToast({
         title: msg || fallback,
         icon: 'none',
     });
+}
+
+function getPublicAccountUnavailableHint(): string {
+    return '';
+}
+
+function getOfficialAccountErrorHint(status?: number): string {
+    switch (status) {
+        case 1:
+            return '当前小程序的关注公众号能力不可用，请检查小程序后台配置。';
+        case 2:
+            return '关联公众号当前不可用，请检查公众号状态。';
+        case 3:
+        case 4:
+            return '请先在小程序后台“设置 -> 关注公众号”中完成关联并开启能力。';
+        case 5:
+            return getPublicAccountUnavailableHint();
+        case 6:
+            return '页面里只能放一个公众号关注组件，请检查页面结构。';
+        default:
+            return '暂时无法加载原生关注入口，请稍后再试。';
+    }
 }
 
 Page({
@@ -79,6 +113,11 @@ Page({
         currentScheduleThemeName: DEFAULT_SCHEDULE_THEME.name,
         themeStyle: buildThemeStyle(DEFAULT_SCHEDULE_THEME),
         showScheduleThemes: false,
+
+        publicAccount: DEFAULT_PUBLIC_ACCOUNT,
+        publicAccountCopyText: '复制微信号',
+        publicAccountHint: '',
+        showOfficialAccountComponent: false,
     },
 
     onShow() {
@@ -91,6 +130,7 @@ Page({
         this.fetchUserInfo();
         this.loadCustomCourses();
         this.loadScheduleTheme();
+        this.loadPublicAccountEntry();
     },
 
     async fetchUserInfo(forceRefresh = false) {
@@ -305,6 +345,33 @@ Page({
         });
     },
 
+    loadPublicAccountEntry() {
+        if (!hasPublicAccountConfig()) {
+            this.setData({
+                publicAccount: DEFAULT_PUBLIC_ACCOUNT,
+                publicAccountHint: '',
+                publicAccountCopyText: '复制微信号',
+                showOfficialAccountComponent: false,
+            });
+            return;
+        }
+
+        const launchScene = wx.getLaunchOptionsSync().scene;
+        const showOfficialAccountComponent = OFFICIAL_ACCOUNT_SUPPORTED_SCENES.has(launchScene);
+
+        this.setData({
+            publicAccount: {
+                ...PUBLIC_ACCOUNT_CONFIG,
+                enabled: true,
+            },
+            publicAccountCopyText: '复制微信号',
+            publicAccountHint: showOfficialAccountComponent
+                ? '若下方没有显示原生关注条，请检查后台是否已完成公众号关联。'
+                : getPublicAccountUnavailableHint(),
+            showOfficialAccountComponent,
+        });
+    },
+
     openCampusMap() {
         triggerLightHaptic();
         wx.navigateTo({
@@ -333,6 +400,35 @@ Page({
             themeStyle: buildThemeStyle(theme),
         });
         wx.showToast({ title: `已切换为${theme.name}`, icon: 'none' });
+    },
+
+    copyPublicAccountId() {
+        const { publicAccount } = this.data;
+        if (!publicAccount.enabled || !publicAccount.wechatId) {
+            return;
+        }
+
+        wx.setClipboardData({
+            data: publicAccount.wechatId,
+            success: () => {
+                this.setData({ publicAccountCopyText: '已复制' });
+                setTimeout(() => {
+                    this.setData({ publicAccountCopyText: '复制微信号' });
+                }, 1500);
+            },
+        });
+    },
+
+    onOfficialAccountLoad() {
+        this.setData({
+            publicAccountHint: '已加载原生关注入口，可直接在下方完成关注。',
+        });
+    },
+
+    onOfficialAccountError(e: WechatMiniprogram.CustomEvent<{ status?: number }>) {
+        this.setData({
+            publicAccountHint: getOfficialAccountErrorHint(e.detail.status),
+        });
     },
 
     showAddModal() {

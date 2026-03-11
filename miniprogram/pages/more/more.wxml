@@ -245,6 +245,23 @@
         <text class="section-title-cn">设置与账户</text>
       </view>
       <view class="settings-card">
+        <view wx:if="{{publicAccount.enabled}}" class="setting-row public-account-row">
+          <view class="setting-text-group public-account-text-group">
+            <text class="setting-title">微信公众号</text>
+            <text class="setting-hint">{{publicAccount.name}} · {{publicAccount.wechatId}}</text>
+            <text wx:if="{{publicAccount.intro}}" class="public-account-intro">{{publicAccount.intro}}</text>
+            <text wx:if="{{publicAccountHint}}" class="public-account-hint">{{publicAccountHint}}</text>
+            <official-account
+              wx:if="{{showOfficialAccountComponent}}"
+              class="public-account-component"
+              bindload="onOfficialAccountLoad"
+              binderror="onOfficialAccountError"
+            ></official-account>
+          </view>
+          <view class="setting-badge public-account-copy" bindtap="copyPublicAccountId">
+            {{publicAccountCopyText}}
+          </view>
+        </view>
         <view class="setting-row" bindtap="handleClearCache" hover-class="row-hover" hover-start-time="0" hover-stay-time="150">
           <view class="setting-text-group">
             <text class="setting-title">清除缓存</text>
