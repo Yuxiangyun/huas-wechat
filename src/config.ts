@@ -1,7 +1,10 @@
 import { dirname, join } from 'node:path';
+import { URLS } from './core/url-config';
 
 const BEIJING_TIME_ZONE = 'Asia/Shanghai';
-const DEFAULT_DB_PATH = './data/huas.db';
+const DEFAULT_DB_PATH = './data/app.db';
+const DEFAULT_ADMIN_USERNAME = 'admin';
+const DEFAULT_ADMIN_PASSWORD = 'change-me-in-env';
 
 // Force runtime timezone to Beijing to avoid host-level timezone drift.
 process.env.TZ = BEIJING_TIME_ZONE;
@@ -17,6 +20,11 @@ export const config = {
   jwtSecret: process.env.JWT_SECRET || 'huas-server-default-secret-change-me',
   dbPath: process.env.DB_PATH || DEFAULT_DB_PATH,
   timeZone: BEIJING_TIME_ZONE,
+  admin: {
+    username: process.env.ADMIN_USERNAME || DEFAULT_ADMIN_USERNAME,
+    password: process.env.ADMIN_PASSWORD || DEFAULT_ADMIN_PASSWORD,
+    realm: process.env.ADMIN_AUTH_REALM || 'Campus Admin',
+  },
 
   // Credential TTLs (school-side, short-lived)
   ttl: {
@@ -73,6 +81,9 @@ export const config = {
     maxStoreNameLength: parsePositiveInt(process.env.DISCOVER_MAX_STORE_NAME_LENGTH, 32),
     maxPriceTextLength: parsePositiveInt(process.env.DISCOVER_MAX_PRICE_TEXT_LENGTH, 20),
     maxContentLength: parsePositiveInt(process.env.DISCOVER_MAX_CONTENT_LENGTH, 400),
+    maxCommentLength: parsePositiveInt(process.env.DISCOVER_MAX_COMMENT_LENGTH, 200),
+    defaultCommentPageSize: parsePositiveInt(process.env.DISCOVER_DEFAULT_COMMENT_PAGE_SIZE, 50),
+    maxCommentPageSize: parsePositiveInt(process.env.DISCOVER_MAX_COMMENT_PAGE_SIZE, 100),
     imageMaxBytes: parsePositiveInt(process.env.DISCOVER_IMAGE_MAX_BYTES, 8 * 1024 * 1024),
     imageMaxDimension: parsePositiveInt(process.env.DISCOVER_IMAGE_MAX_DIMENSION, 1280),
     imageQuality: Math.min(95, Math.max(40, parsePositiveInt(process.env.DISCOVER_IMAGE_QUALITY, 78))),
@@ -100,13 +111,14 @@ export const JW_SJMS_VALUE = '94CA0081978330A1E05320001AAC856E';
 export const PORTAL_HEADERS = {
   'X-Device-Info': 'PC',
   'X-Terminal-Info': 'PC',
-  'Origin': 'https://portal.huas.edu.cn',
-  'Referer': 'https://portal.huas.edu.cn/main.html',
+  'Origin': URLS.portalOrigin,
+  'Referer': URLS.portalReferer,
 } as const;
 
 // Session expiry indicators (shared by HTML parsers)
 export const SESSION_EXPIRED_INDICATORS = [
-  '用户登录', 'cas/login', 'cas.huas.edu.cn', '请重新登录',
+  '用户登录', 'cas/login', '请重新登录',
   '会话超时', 'top.location.href', 'sso.jsp', 'parent.location',
   'window.location.href',
+  ...(URLS.sessionExpiredHost ? [URLS.sessionExpiredHost] : []),
 ];

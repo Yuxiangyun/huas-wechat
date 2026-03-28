@@ -1,6 +1,6 @@
 module.exports = {
   apps: [{
-    name: 'huas-server',
+    name: 'campus-server',
     cwd: __dirname,
     script: 'src/index.ts',
     interpreter: 'bun',

@@ -21,8 +21,8 @@ export function LoginPage() {
         <div className="w-full space-y-4 sm:space-y-5">
           <PageHero
             description="登录后即可使用"
-            eyebrow="HUAS 网页端"
-            highlight="文理"
+            eyebrow="网页端"
+            highlight="校园"
             suffix="小助手"
           />
           <LoginForm />

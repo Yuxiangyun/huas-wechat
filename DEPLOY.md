@@ -19,8 +19,8 @@
 
 必须确认服务器能访问：
 
-- `cas.huas.edu.cn`
-- `portal.huas.edu.cn`
+- `UPSTREAM_CAS_BASE_URL`
+- `UPSTREAM_PORTAL_BASE_URL`
 
 ## 2. 当前维护策略
 
@@ -67,8 +67,8 @@ export PATH="$HOME/.bun/bin:$PATH"
 ### 3.3 拉取代码
 
 ```bash
-git clone <your-repo-url> /www/wwwroot/huas-server
-cd /www/wwwroot/huas-server
+git clone <your-repo-url> /var/www/campus-server
+cd /var/www/campus-server
 ```
 
 ### 3.4 准备环境变量
@@ -83,10 +83,16 @@ cp .env.example .env
 PORT=3000
 NODE_ENV=production
 JWT_SECRET=replace-with-a-random-secret
-DB_PATH=./data/huas.db
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=change-me-before-deploy
+DB_PATH=./data/app.db
 LOG_LEVEL=info
 TZ=Asia/Shanghai
 TIMEZONE=Asia/Shanghai
+UPSTREAM_CAS_BASE_URL=https://cas.example.edu.cn
+UPSTREAM_PORTAL_BASE_URL=https://portal.example.edu.cn
+UPSTREAM_JW_BASE_URL=https://jw.example.edu.cn
+UPSTREAM_AUTHX_BASE_URL=https://auth.example.edu.cn
 ```
 
 生成随机密钥：
@@ -152,9 +158,9 @@ scripts/deploy-huas.sh
 
 默认参数：
 
-- `REMOTE_HOST=huas`
-- `REMOTE_DIR=/www/wwwroot/huas-server`
-- `APP_NAME=huas-server`
+- `REMOTE_HOST=your-server`
+- `REMOTE_DIR=/var/www/campus-server`
+- `APP_NAME=campus-server`
 
 直接部署：
 
@@ -175,9 +181,9 @@ REMOTE_HOST=your-server scripts/deploy-huas.sh --dry-run
 
 | 变量 | 默认值 | 作用 |
 |---|---|---|
-| `REMOTE_HOST` | `huas` | SSH 目标主机 |
-| `REMOTE_DIR` | `/www/wwwroot/huas-server` | 远程项目目录 |
-| `APP_NAME` | `huas-server` | PM2 应用名 |
+| `REMOTE_HOST` | `your-server` | SSH 目标主机 |
+| `REMOTE_DIR` | `/var/www/campus-server` | 远程项目目录 |
+| `APP_NAME` | `campus-server` | PM2 应用名 |
 | `SYNC_DELETE` | `0` | 为 `1` 时启用 `rsync --delete` |
 | `BUILD_WEB` | `1` | 为 `0` 时跳过本地前端构建 |
 | `INSTALL_WEB_DEPS` | `1` | 为 `0` 时跳过本地 `web` 依赖安装 |
@@ -203,24 +209,24 @@ REMOTE_HOST=your-server scripts/deploy-huas.sh --dry-run
 
 ```bash
 pm2 status
-pm2 logs huas-server
-pm2 restart huas-server
-pm2 stop huas-server
-pm2 delete huas-server
+pm2 logs campus-server
+pm2 restart campus-server
+pm2 stop campus-server
+pm2 delete campus-server
 pm2 monit
 ```
 
 ### 5.2 安装依赖
 
 ```bash
-cd /www/wwwroot/huas-server
+cd /var/www/campus-server
 bun install --frozen-lockfile --production
 ```
 
 ### 5.3 前端构建
 
 ```bash
-cd /www/wwwroot/huas-server/web
+cd /var/www/campus-server/web
 bun install --frozen-lockfile
 bun run build
 ```
@@ -230,7 +236,7 @@ bun run build
 线上部署后最关键的目录：
 
 ```txt
-/www/wwwroot/huas-server
+/var/www/campus-server
 ├── src/
 ├── web/
 │   └── dist/
@@ -245,7 +251,7 @@ bun run build
 
 - `web/dist` 是 `/m` 前端入口的静态资源来源
 - `public/status.html` 是 `/status` 页面来源
-- `data/` 存数据库和 Discover 图片
+- `data/` 存数据库和运行时上传内容，建议不要提交到仓库
 - `logs/pm2-out.log` 与 `logs/pm2-error.log` 会被管理仪表盘读取
 
 ## 7. Nginx 反向代理
@@ -273,7 +279,7 @@ bun run build
 
 数据文件：
 
-- `data/huas.db`
+- `data/app.db`
 - `data/discover/`
 - `data/announcements.json`
 

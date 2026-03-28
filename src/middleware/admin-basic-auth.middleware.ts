@@ -1,5 +1,6 @@
 import type { Context, Next } from 'hono';
 import { timingSafeEqual } from 'node:crypto';
+import { config } from '../config';
 
 declare module 'hono' {
   interface ContextVariableMap {
@@ -7,12 +8,8 @@ declare module 'hono' {
   }
 }
 
-// Fixed credentials by requirement
-const ADMIN_USERNAME = 'example-admin';
-const ADMIN_PASSWORD = 'change-me-in-env';
-
 const BASIC_PREFIX = 'Basic ';
-const AUTH_CHALLENGE = 'Basic realm="HUAS Admin", charset="UTF-8"';
+const AUTH_CHALLENGE = `Basic realm="${config.admin.realm}", charset="UTF-8"`;
 
 function safeEqual(a: string, b: string): boolean {
   const aBuf = Buffer.from(a, 'utf8');
@@ -48,7 +45,7 @@ export async function adminBasicAuthMiddleware(c: Context, next: Next) {
   const username = decoded.slice(0, separatorIndex);
   const password = decoded.slice(separatorIndex + 1);
 
-  if (!safeEqual(username, ADMIN_USERNAME) || !safeEqual(password, ADMIN_PASSWORD)) {
+  if (!safeEqual(username, config.admin.username) || !safeEqual(password, config.admin.password)) {
     return unauthorized(c);
   }
 

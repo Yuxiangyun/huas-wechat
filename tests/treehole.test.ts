@@ -63,7 +63,7 @@ async function authHeaderFor(userId: number, studentId: string) {
 }
 
 function adminAuthHeader() {
-  const credentials = Buffer.from('example-admin:change-me-in-env').toString('base64');
+  const credentials = Buffer.from(`${config.admin.username}:${config.admin.password}`).toString('base64');
   return { Authorization: `Basic ${credentials}` };
 }
 
@@ -73,6 +73,7 @@ async function resetData() {
   await db.delete(schema.treeholePostLikes);
   await db.delete(schema.treeholeComments);
   await db.delete(schema.treeholePosts);
+  await db.delete(schema.discoverComments);
   await db.delete(schema.discoverPostRatings);
   await db.delete(schema.discoverPosts);
   await db.delete(schema.credentials);

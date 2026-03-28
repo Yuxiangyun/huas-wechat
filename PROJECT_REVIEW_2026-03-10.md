@@ -1,7 +1,7 @@
 # HUAS 项目整体审查报告
 
 > 审查日期：2026-03-10
-> 审查范围：`/Users/xiangyun/Desktop/huas-server` 当前工作区
+> 审查范围：`./huas-server` 当前工作区
 > 审查方式：代码阅读 + 自动化验证 + 现有文档对照
 
 ## 1. 结论摘要
@@ -170,10 +170,10 @@ cd web && npm run build
 - `src/middleware/admin-basic-auth.middleware.ts:10-12`
 - `API.md` 中直接写明管理员用户名和密码
 
-现状：
+现状（原始凭证已从开源版文档中移除）：
 
-- `ADMIN_USERNAME = 'example-admin'`
-- `ADMIN_PASSWORD = 'change-me-in-env'`
+- `ADMIN_USERNAME = '<redacted>'`
+- `ADMIN_PASSWORD = '<redacted>'`
 
 影响：
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REMOTE_HOST="${REMOTE_HOST:-huas}"
-REMOTE_DIR="${REMOTE_DIR:-/www/wwwroot/huas-server}"
-APP_NAME="${APP_NAME:-huas-server}"
+REMOTE_HOST="${REMOTE_HOST:-your-server}"
+REMOTE_DIR="${REMOTE_DIR:-/var/www/campus-server}"
+APP_NAME="${APP_NAME:-campus-server}"
 SYNC_DELETE="${SYNC_DELETE:-0}"
 BUILD_WEB="${BUILD_WEB:-1}"
 INSTALL_WEB_DEPS="${INSTALL_WEB_DEPS:-1}"
