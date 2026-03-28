@@ -300,7 +300,7 @@ Page({
   onShareAppMessage() {
     const currentMap = getCampusMapById(this.data.activeMapId);
     return createShareAppMessage({
-      title: `湖南文理学院${currentMap.name}地图`,
+      title: `校园地图 · ${currentMap.name}`,
       path: '/pages/campus-map/campus-map',
     });
   },
@@ -308,7 +308,7 @@ Page({
   onShareTimeline() {
     const currentMap = getCampusMapById(this.data.activeMapId);
     return createShareTimeline({
-      title: `湖南文理学院${currentMap.name}地图`,
+      title: `校园地图 · ${currentMap.name}`,
     });
   },
 });

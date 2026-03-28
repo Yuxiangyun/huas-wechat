@@ -434,6 +434,6 @@ Page({
         });
     },
 
-    onShareAppMessage() { return { title: '为文理er准备的小程序，欢迎使用！', path: '/pages/index/index', imageUrl: '/images/share-cover.png' }; },
-    onShareTimeline() { return { title: '为文理er准备的小程序，欢迎使用！', imageUrl: '/images/share-cover.png' }; },
+    onShareAppMessage() { return { title: '一个可自托管的校园服务小程序示例，欢迎使用！', path: '/pages/index/index', imageUrl: '/images/share-cover.png' }; },
+    onShareTimeline() { return { title: '一个可自托管的校园服务小程序示例，欢迎使用！', imageUrl: '/images/share-cover.png' }; },
 });

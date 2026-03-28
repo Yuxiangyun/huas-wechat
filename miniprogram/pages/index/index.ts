@@ -2,7 +2,7 @@
 import { LOCAL_SCHEDULE_CACHE_TTL_MS } from '../../constants/cache';
 import { api, Course, PublicAnnouncement } from '../../utils/api';
 import { fetchPublicAnnouncements, hasUnreadAnnouncements, markAnnouncementsAsRead } from '../../utils/announcements';
-import { PUBLIC_ACCOUNT_CONFIG, hasPublicAccountConfig } from '../../utils/config';
+import { APP_COPY_CONFIG, PUBLIC_ACCOUNT_CONFIG, hasPublicAccountConfig } from '../../utils/config';
 import { buildCachedMetaDisplayState, buildMetaDisplayState } from '../../utils/meta-display';
 import { createDefaultShareContent, createShareAppMessage } from '../../utils/share';
 import { formatBeijingToday, formatDate, getMonday } from '../../utils/schedule-date';
@@ -45,6 +45,8 @@ const SECTION_TIME_RANGES: SectionTimeRange[] = [
   { start: 1140, end: 1240, breakEnd: 1240 },
 ];
 const PUBLIC_ACCOUNT_BUTTON_TEXT = '拍好饭/树洞';
+const OFFICIAL_ACCOUNT_ORIGINAL_ID_PATTERN = /^gh_[0-9A-Za-z]+$/;
+const OFFICIAL_ACCOUNT_WECHAT_ID_PATTERN = /^[0-9A-Za-z_-]{4,32}$/;
 
 let timeLineTimer: number | null = null;
 function getHashCode(str: string): number {
@@ -487,38 +489,25 @@ Page({
     triggerLightHaptic();
     this.fetchSchedule(true);
   },
-  openPublicAccount() {
-    triggerLightHaptic();
+  showPublicAccountFallback(username: string, reason?: string) {
+    const reasonText = reason ? `${reason}。` : '';
 
-    if (!hasPublicAccountConfig()) {
-      wx.showToast({ title: '未配置公众号', icon: 'none' });
-      return;
-    }
+    wx.showActionSheet({
+      itemList: ['前往服务页入口', '复制微信号'],
+      success: ({ tapIndex }) => {
+        if (tapIndex === 0) {
+          wx.switchTab({ url: '/pages/more/more' });
+          return;
+        }
 
-    const username = PUBLIC_ACCOUNT_CONFIG.wechatId.trim();
-    const wxAny = wx as any;
-
-    if (typeof wxAny.openOfficialAccountChat !== 'function') {
-      wx.showModal({
-        title: '当前版本不支持',
-        content: `当前微信版本无法直接拉起公众号，可复制微信号 ${username} 后前往微信搜索。`,
-        confirmText: '复制微信号',
-        success: ({ confirm }) => {
-          if (confirm) {
-            wx.setClipboardData({ data: username });
-          }
-        },
-      });
-      return;
-    }
-
-    wxAny.openOfficialAccountChat({
-      username,
-      fail: (err: { errMsg?: string }) => {
-        console.error('拉起公众号失败:', err);
+        if (tapIndex === 1) {
+          wx.setClipboardData({ data: username });
+        }
+      },
+      fail: () => {
         wx.showModal({
-          title: '拉起失败',
-          content: `暂时无法直接打开公众号，可复制微信号 ${username} 后前往微信搜索。`,
+          title: '打开失败',
+          content: `${reasonText}可复制微信号 ${username} 后前往微信搜索。`,
           confirmText: '复制微信号',
           success: ({ confirm }: { confirm: boolean }) => {
             if (confirm) {
@@ -528,6 +517,71 @@ Page({
         });
       },
     });
+  },
+  openPublicAccount() {
+    triggerLightHaptic();
+
+    if (!hasPublicAccountConfig()) {
+      wx.showToast({ title: '未配置公众号', icon: 'none' });
+      return;
+    }
+
+    const chatUsername = PUBLIC_ACCOUNT_CONFIG.wechatId.trim();
+    const profileUsername = PUBLIC_ACCOUNT_CONFIG.originalId?.trim() || '';
+    const fallbackUsername = chatUsername || profileUsername;
+
+    if (!fallbackUsername) {
+      wx.showToast({ title: '未配置公众号账号', icon: 'none' });
+      return;
+    }
+
+    const wxAny = wx as any;
+    const canUseProfileApi = typeof wxAny.openOfficialAccountProfile === 'function';
+    const canUseChatApi = typeof wxAny.openOfficialAccountChat === 'function';
+    const hasValidProfileUsername = OFFICIAL_ACCOUNT_ORIGINAL_ID_PATTERN.test(profileUsername);
+    const hasValidChatUsername = OFFICIAL_ACCOUNT_WECHAT_ID_PATTERN.test(chatUsername);
+    const usernameForFallback = hasValidChatUsername
+      ? chatUsername
+      : (hasValidProfileUsername ? profileUsername : fallbackUsername);
+
+    const openByChat = () => {
+      if (!canUseChatApi) {
+        this.showPublicAccountFallback(usernameForFallback, '当前微信版本不支持直接拉起');
+        return;
+      }
+
+      if (!hasValidChatUsername) {
+        this.showPublicAccountFallback(usernameForFallback, '公众号微信号格式无效');
+        return;
+      }
+
+      wxAny.openOfficialAccountChat({
+        username: chatUsername,
+        fail: (err: { errMsg?: string; err_code?: number }) => {
+          console.error('拉起公众号会话失败:', err);
+          const isInvalidParameter = err?.err_code === 1001 || err?.errMsg?.includes('invalid request parameter');
+          if (isInvalidParameter) {
+            this.showPublicAccountFallback(usernameForFallback, '公众号会话参数无效');
+            return;
+          }
+
+          this.showPublicAccountFallback(usernameForFallback, '暂时无法直接打开公众号');
+        },
+      });
+    };
+
+    if (canUseProfileApi && hasValidProfileUsername) {
+      wxAny.openOfficialAccountProfile({
+        username: profileUsername,
+        fail: (err: { errMsg?: string; err_code?: number }) => {
+          console.error('拉起公众号主页失败，降级会话模式:', err);
+          openByChat();
+        },
+      });
+      return;
+    }
+
+    openByChat();
   },
   prevWeek() {
     triggerLightHaptic();
@@ -611,5 +665,5 @@ Page({
     this.setData({ showAnnouncementsModal: false });
   },
 
-  onShareAppMessage() { return createShareAppMessage(createDefaultShareContent('为文理er准备的查课表小程序！')); }
+  onShareAppMessage() { return createShareAppMessage(createDefaultShareContent(APP_COPY_CONFIG.shareShortDescription)); }
 });

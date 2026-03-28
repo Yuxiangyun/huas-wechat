@@ -5,7 +5,7 @@ import { readTimedCache, writeTimedCache } from '../../utils/local-cache';
 import { buildCachedMetaDisplayState, buildMetaDisplayState } from '../../utils/meta-display';
 import { createCoverShareContent, createShareAppMessage, createShareTimeline } from '../../utils/share';
 import { clearAllSessionData, ensureLoggedIn, redirectToLogin } from '../../utils/session';
-import { PUBLIC_ACCOUNT_CONFIG, hasPublicAccountConfig, type PublicAccountConfig } from '../../utils/config';
+import { APP_COPY_CONFIG, PUBLIC_ACCOUNT_CONFIG, hasPublicAccountConfig, type PublicAccountConfig } from '../../utils/config';
 import { storage } from '../../utils/storage';
 import { customCourseStorage, formatWeeks } from '../../utils/custom-course/index';
 import { buildThemeStyle, DEFAULT_SCHEDULE_THEME_KEY, SCHEDULE_THEME_OPTIONS, getScheduleThemeByKey } from '../../utils/theme';
@@ -658,6 +658,6 @@ Page({
         });
     },
 
-    onShareAppMessage() { return createShareAppMessage(createCoverShareContent('为文理er准备的小程序，欢迎使用！')); },
-    onShareTimeline() { return createShareTimeline(createCoverShareContent('为文理er准备的小程序，欢迎使用！')); },
+    onShareAppMessage() { return createShareAppMessage(createCoverShareContent(APP_COPY_CONFIG.shareDescription)); },
+    onShareTimeline() { return createShareTimeline(createCoverShareContent(APP_COPY_CONFIG.shareDescription)); },
 });

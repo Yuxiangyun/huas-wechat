@@ -1,8 +1,8 @@
 <view class="about-container" style="{{themeStyle}}">
   <view class="hero-section">
     <view class="title-row">
-      <text class="title-black">文理</text>
-      <text class="title-yellow">小助手</text>
+      <text class="title-black">{{brandPrimary}}</text>
+      <text class="title-yellow">{{brandSecondary}}</text>
     </view>
     <text class="subtitle">{{greetingText}}</text>
   </view>
@@ -19,8 +19,8 @@
         </button>
         <view class="list-row" bindtap="copyWechat" hover-class="row-hover">
           <view class="list-content">
-            <text class="list-row-label">讨论交流</text>
-            <text class="list-row-hint">微信号：-nullsleep (欢迎提意见～)</text>
+            <text class="list-row-label">{{contactLabel}}</text>
+            <text class="list-row-hint">{{contactHint}}</text>
           </view>
           <view class="list-row-tag">{{copyTagText}}</view>
         </view>
@@ -90,6 +90,6 @@
     </view>
   </view>
   <view class="footer">
-    <text class="footer-text">© 2026 bulala</text>
+    <text class="footer-text">{{footerText}}</text>
   </view>
 </view>

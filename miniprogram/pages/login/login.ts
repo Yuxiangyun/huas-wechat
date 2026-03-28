@@ -3,6 +3,7 @@ import { fetchPublicAnnouncements, hasUnreadAnnouncements, markAnnouncementsAsRe
 import { createDefaultShareContent, createShareAppMessage, createShareTimeline } from '../../utils/share';
 import { activateSession } from '../../utils/session';
 import { storage } from '../../utils/storage';
+import { APP_COPY_CONFIG, SUPPORT_CONTACT_CONFIG } from '../../utils/config';
 const CAPTCHA_REQUIRED_MSG = '学校系统要求补充验证码。这通常是密码或学号输错后触发，请先核对密码，再输入验证码登录。';
 const CREDENTIAL_ERROR_MSG = '学号或密码错误，请核对后重新登录。';
 const CREDENTIAL_ERROR_WITH_CAPTCHA_MSG = '学号或密码可能不正确。请先核对密码，再填写验证码登录。';
@@ -62,6 +63,10 @@ function getLoginErrorGuidance(msg?: string, options: { showCaptcha?: boolean } 
 
 Page({
   data: {
+    brandPrimary: APP_COPY_CONFIG.brandPrimary,
+    brandSecondary: APP_COPY_CONFIG.brandSecondary,
+    brandSubtitle: APP_COPY_CONFIG.englishSubtitle,
+    feedbackHint: SUPPORT_CONTACT_CONFIG.hint,
     username: '',
     password: '',
     captcha: '',
@@ -331,10 +336,10 @@ Page({
   },
 
   onShareAppMessage() {
-    return createShareAppMessage(createDefaultShareContent('为文理er准备的查课表，查成绩小程序，欢迎使用！'));
+    return createShareAppMessage(createDefaultShareContent(APP_COPY_CONFIG.shareDescription));
   },
 
   onShareTimeline() {
-    return createShareTimeline(createDefaultShareContent('为文理er准备的查课表，查成绩小程序，欢迎使用！'));
+    return createShareTimeline(createDefaultShareContent(APP_COPY_CONFIG.shareDescription));
   },
 });

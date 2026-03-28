@@ -3,10 +3,10 @@
   <!-- 标题 -->
   <view class="header">
     <view class="title-row">
-      <text class="title-black">文理</text>
-      <text class="title-yellow">小助手</text>
+      <text class="title-black">{{brandPrimary}}</text>
+      <text class="title-yellow">{{brandSecondary}}</text>
     </view>
-    <text class="subtitle">Hunan University of Arts and Science</text>
+    <text class="subtitle">{{brandSubtitle}}</text>
   </view>
   <!-- 登录表单 -->
   <view class="form-container">
@@ -18,7 +18,7 @@
     <!-- 密码 -->
     <view class="input-group">
       <text class="input-label">密码</text>
-      <input class="input" password placeholder="智慧文理密码" value="{{password}}" bindinput="onPasswordInput" />
+      <input class="input" password placeholder="统一认证密码" value="{{password}}" bindinput="onPasswordInput" />
     </view>
     <!-- 验证码（仅在需要时显示） -->
     <view class="input-group captcha-group" wx:if="{{showCaptcha}}">
@@ -79,7 +79,7 @@
     <view class="footer-content">
       <text class="footer-link" bindtap="goToAbout">关于</text>
       <text class="footer-divider">|</text>
-      <text class="footer-text">反馈信息，使用问题联系：-nullsleep</text>
+      <text class="footer-text">{{feedbackHint}}</text>
     </view>
   </view>
 </view>

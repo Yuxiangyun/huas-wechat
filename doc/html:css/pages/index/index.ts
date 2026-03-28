@@ -492,5 +492,5 @@ Page({
     this.setData({ showAnnouncementsModal: false });
   },
 
-  onShareAppMessage() { return { title: '为文理er准备的查课表小程序！', path: '/pages/index/index' }; }
+  onShareAppMessage() { return { title: '一个可自托管的课表与校园服务小程序示例！', path: '/pages/index/index' }; }
 });

@@ -20,7 +20,7 @@
         <view class="list-row" bindtap="copyWechat" hover-class="row-hover">
           <view class="list-content">
             <text class="list-row-label">讨论交流</text>
-            <text class="list-row-hint">微信号：-nullsleep (欢迎提意见～)</text>
+            <text class="list-row-hint">请在开源前填写公开反馈方式</text>
           </view>
           <view class="list-row-tag">{{copyTagText}}</view>
         </view>
@@ -90,6 +90,6 @@
     </view>
   </view>
   <view class="footer">
-    <text class="footer-text">© 2026 bulala</text>
+    <text class="footer-text">Open Source Edition</text>
   </view>
 </view>

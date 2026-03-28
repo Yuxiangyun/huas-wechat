@@ -1,7 +1,7 @@
 # HUAS 小程序维护文档（架构与变更总览）
 
 > 更新时间：2026-03-07  
-> 适用范围：`/Users/xiangyun/Desktop/huas-weixin/miniprogram`
+> 适用范围：`./miniprogram`
 
 ## 1. 目标与使用方式
 

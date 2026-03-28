@@ -3,14 +3,19 @@ import { createDefaultShareContent, createShareAppMessage, createShareTimeline }
 import { buildThemeStyle, DEFAULT_SCHEDULE_THEME_KEY, getScheduleThemeByKey, type ScheduleThemeKey } from '../../utils/theme';
 import { setSelectedTab } from '../../utils/tab-bar';
 import { getBeijingHour } from '../../utils/util';
-import { ABOUT_CONTRIBUTORS_CONFIG } from '../../utils/config';
+import { ABOUT_CONTRIBUTORS_CONFIG, APP_COPY_CONFIG, SUPPORT_CONTACT_CONFIG } from '../../utils/config';
 
 Page({
   data: {
     currentScheduleThemeKey: DEFAULT_SCHEDULE_THEME_KEY as ScheduleThemeKey,
     themeStyle: buildThemeStyle(getScheduleThemeByKey(DEFAULT_SCHEDULE_THEME_KEY)),
+    brandPrimary: APP_COPY_CONFIG.brandPrimary,
+    brandSecondary: APP_COPY_CONFIG.brandSecondary,
     greetingText: '',
     copyTagText: '复制',
+    contactLabel: SUPPORT_CONTACT_CONFIG.label,
+    contactHint: SUPPORT_CONTACT_CONFIG.hint,
+    footerText: APP_COPY_CONFIG.footerText,
     features: [
       { label: '课程表查询', desc: '查看每周课程安排，支持周次切换' },
       { label: '成绩查询', desc: '查看历史成绩、学分和绩点统计' },
@@ -60,8 +65,17 @@ Page({
   },
 
   copyWechat() {
+    const contact = SUPPORT_CONTACT_CONFIG.clipboardText.trim();
+    if (!contact) {
+      wx.showToast({
+        title: '未配置公开联系方式',
+        icon: 'none',
+      });
+      return;
+    }
+
     wx.setClipboardData({
-      data: '-nullsleep',
+      data: contact,
       success: () => {
         this.setData({ copyTagText: '已复制！' });
         setTimeout(() => {
@@ -78,10 +92,10 @@ Page({
   },
 
   onShareAppMessage() {
-    return createShareAppMessage(createDefaultShareContent('为文理er准备的查课表，查成绩小程序，欢迎使用！'));
+    return createShareAppMessage(createDefaultShareContent(APP_COPY_CONFIG.shareDescription));
   },
 
   onShareTimeline() {
-    return createShareTimeline(createDefaultShareContent('为文理er准备的查课表，查成绩小程序，欢迎使用！'));
+    return createShareTimeline(createDefaultShareContent(APP_COPY_CONFIG.shareDescription));
   },
 });

@@ -48,7 +48,7 @@ Page({
 
     copyWechat() {
         wx.setClipboardData({
-            data: '-nullsleep',
+            data: '',
             success: () => {
                 this.setData({ copyTagText: '已复制！' });
                 setTimeout(() => {
@@ -60,7 +60,7 @@ Page({
 
     onShareAppMessage() {
         return {
-            title: '为文理er准备的查课表，查成绩小程序，欢迎使用！',
+            title: '一个可自托管的校园服务小程序示例，欢迎使用！',
             path: '/pages/index/index',
             imageUrl: '/images/share-cover.png',
         };
@@ -68,7 +68,7 @@ Page({
 
     onShareTimeline() {
         return {
-            title: '为文理er准备的查课表，查成绩小程序，欢迎使用！',
+            title: '一个可自托管的校园服务小程序示例，欢迎使用！',
             imageUrl: '/images/share-cover.png',
         };
     }
