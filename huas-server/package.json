@@ -1,0 +1,34 @@
+{
+  "name": "huas-server",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "web:dev": "npm --prefix ./web run dev",
+    "web:build": "npm --prefix ./web run build",
+    "web:preview": "npm --prefix ./web run preview",
+    "web:typecheck": "npm --prefix ./web run typecheck",
+    "test": "bun test --preload ./tests/setup.ts",
+    "test:e2e": "bun test --preload ./tests/e2e.setup.ts ./tests/e2e.live.test.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@types/tough-cookie": "^4.0.5",
+    "cheerio": "^1.0.0",
+    "drizzle-orm": "^0.36.4",
+    "heic-convert": "^2.1.0",
+    "hono": "^4.6.14",
+    "sharp": "^0.34.4",
+    "tough-cookie": "^5.0.0",
+    "winston": "^3.17.0",
+    "winston-daily-rotate-file": "^5.0.0"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.28.1",
+    "@types/bun": "^1.1.13",
+    "typescript": "^5.7.2"
+  }
+}

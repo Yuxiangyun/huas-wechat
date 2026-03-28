@@ -1,0 +1,25 @@
+module.exports = {
+  apps: [{
+    name: 'campus-server',
+    cwd: __dirname,
+    script: 'src/index.ts',
+    interpreter: 'bun',
+    exec_mode: 'fork',
+    instances: 1,
+    autorestart: true,
+    max_restarts: 10,
+    restart_delay: 3000,
+    max_memory_restart: '256M',
+    env: {
+      NODE_ENV: 'production',
+      TIMEZONE: 'Asia/Shanghai',
+      TZ: 'Asia/Shanghai',
+    },
+    env_file: '.env',
+    // Log config
+    error_file: './logs/pm2-error.log',
+    out_file: './logs/pm2-out.log',
+    merge_logs: true,
+    log_date_format: 'YYYY-MM-DD HH:mm:ss',
+  }],
+};

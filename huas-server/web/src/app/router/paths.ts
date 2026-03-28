@@ -1,0 +1,15 @@
+export const appRoutes = {
+  root: '/',
+  login: '/login',
+  discover: '/discover',
+  treehole: '/treehole',
+  me: '/me',
+  meDiscover: '/me/discover',
+  meTreehole: '/me/treehole',
+  adminRoot: '/admin',
+  adminDashboard: '/admin/dashboard',
+  adminAnnouncements: '/admin/announcements',
+  adminDiscover: '/admin/discover',
+  adminTreehole: '/admin/treehole',
+  adminLogs: '/admin/logs',
+} as const;

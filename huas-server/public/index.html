@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HUAS Server 全场景测试台</title>
+    <style>
+      :root {
+        --bg: #f4f7fb;
+        --panel: #ffffff;
+        --line: #d7dfeb;
+        --text: #1d2636;
+        --muted: #5b677a;
+        --primary: #0f6fff;
+        --danger: #c62828;
+        --ok: #1b8f3e;
+        --warn: #af6d00;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+        color: var(--text);
+        background: linear-gradient(140deg, #eef5ff 0%, #f7f9fc 45%, #eef8f4 100%);
+      }
+
+      .container {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      .header {
+        background: linear-gradient(115deg, #0a4db8 0%, #0f6fff 55%, #2aa9ff 100%);
+        color: #fff;
+        border-radius: 14px;
+        padding: 18px 20px;
+        margin-bottom: 14px;
+      }
+
+      .header h1 {
+        margin: 0 0 8px;
+        font-size: 22px;
+      }
+
+      .header p {
+        margin: 0;
+        font-size: 13px;
+        opacity: 0.95;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 12px;
+      }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+      }
+
+      .card h2 {
+        margin: 0 0 10px;
+        font-size: 15px;
+      }
+
+      .col-12 {
+        grid-column: span 12;
+      }
+
+      .col-8 {
+        grid-column: span 8;
+      }
+
+      .col-6 {
+        grid-column: span 6;
+      }
+
+      .col-4 {
+        grid-column: span 4;
+      }
+
+      .col-3 {
+        grid-column: span 3;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 8px;
+      }
+
+      .field {
+        grid-column: span 12;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .field label {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      input,
+      textarea,
+      select {
+        width: 100%;
+        border: 1px solid var(--line);
+        background: #fff;
+        color: var(--text);
+        padding: 8px 10px;
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 12px;
+      }
+
+      textarea {
+        min-height: 90px;
+        resize: vertical;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 8px;
+      }
+
+      button {
+        border: 0;
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-family: inherit;
+        font-size: 12px;
+        cursor: pointer;
+        background: #dde7f8;
+        color: #14305f;
+      }
+
+      button.primary {
+        background: var(--primary);
+        color: #fff;
+      }
+
+      button.warn {
+        background: #ffe6bf;
+        color: #734800;
+      }
+
+      button.danger {
+        background: #ffd6d6;
+        color: var(--danger);
+      }
+
+      .hint {
+        margin-top: 6px;
+        font-size: 11px;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+
+      .status {
+        display: inline-block;
+        border-radius: 99px;
+        padding: 3px 8px;
+        font-size: 11px;
+        margin-right: 6px;
+        border: 1px solid var(--line);
+        background: #f8fbff;
+      }
+
+      .status.ok {
+        color: var(--ok);
+        border-color: #b7dfc4;
+        background: #f1fcf4;
+      }
+
+      .status.warn {
+        color: var(--warn);
+        border-color: #f0d5a6;
+        background: #fff8ec;
+      }
+
+      .status.bad {
+        color: var(--danger);
+        border-color: #f2b4b4;
+        background: #fff4f4;
+      }
+
+      .log-box,
+      .json-box {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #0f1729;
+        color: #dbebff;
+        padding: 10px;
+        min-height: 170px;
+        overflow: auto;
+        white-space: pre-wrap;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .captcha-wrap {
+        margin-top: 8px;
+        border: 1px dashed var(--line);
+        border-radius: 8px;
+        padding: 8px;
+        min-height: 52px;
+      }
+
+      .captcha-wrap img {
+        max-width: 220px;
+        display: block;
+      }
+
+      .scenario-list {
+        margin: 0;
+        padding-left: 16px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .scenario-list li {
+        margin-bottom: 4px;
+      }
+
+      @media (max-width: 980px) {
+        .col-8,
+        .col-6,
+        .col-4,
+        .col-3 {
+          grid-column: span 12;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <section class="header">
+        <h1>HUAS Server 全场景测试台</h1>
+        <p>基于 API/架构文档：登录、验证码、90天Token、缓存命中、强制刷新、凭证恢复链路（可观测）</p>
+      </section>
+
+      <section class="grid">
+        <div class="card col-12">
+          <h2>环境配置</h2>
+          <div class="row">
+            <div class="field col-4">
+              <label for="baseUrl">Base URL</label>
+              <input id="baseUrl" type="text" value="http://localhost:3000" />
+            </div>
+            <div class="field col-8">
+              <label for="currentToken">当前 Token（自动填充，可手动覆盖）</label>
+              <input id="currentToken" type="text" placeholder="Bearer token" />
+            </div>
+          </div>
+          <div class="actions">
+            <button id="btnDecodeToken">解析 Token</button>
+            <button id="btnTestBadToken" class="warn">测试无效/过期 Token (4001)</button>
+            <button id="btnClearToken" class="danger">清空 Token</button>
+          </div>
+          <div class="hint">
+            注意：此页面仅用于本地/内网联调。密码不会持久化写入文件，但会存在当前浏览器页面内存直到你刷新或清空输入框。
+          </div>
+          <div style="margin-top: 8px">
+            <span id="tokenState" class="status">Token: 未设置</span>
+            <span id="tokenExp" class="status">exp: -</span>
+          </div>
+        </div>
+
+        <div class="card col-6">
+          <h2>场景 1：登录 / 验证码重试</h2>
+          <div class="row">
+            <div class="field col-6">
+              <label for="username">学号</label>
+              <input id="username" type="text" placeholder="2024xxxxxx" />
+            </div>
+            <div class="field col-6">
+              <label for="password">密码</label>
+              <input id="password" type="password" />
+            </div>
+            <div class="field col-6">
+              <label for="captcha">验证码（收到 challenge 后填写）</label>
+              <input id="captcha" type="text" placeholder="AB12" />
+            </div>
+            <div class="field col-6">
+              <label for="sessionId">sessionId（自动填充，可手动覆盖）</label>
+              <input id="sessionId" type="text" />
+            </div>
+          </div>
+          <div class="actions">
+            <button id="btnLogin" class="primary">首次登录</button>
+            <button id="btnLoginWithCaptcha" class="warn">带验证码重试</button>
+          </div>
+          <div class="captcha-wrap">
+            <div class="hint">验证码图片（当 needCaptcha=true 时出现）</div>
+            <img id="captchaImage" alt="captcha" style="display: none" />
+          </div>
+        </div>
+
+        <div class="card col-6">
+          <h2>场景速测（一键）</h2>
+          <div class="actions">
+            <button id="btnHealth">健康检查 /health</button>
+            <button id="btnScenarioNormal" class="primary">场景2：正常请求（看缓存）</button>
+            <button id="btnScenarioRefresh" class="warn">场景3/4：强制刷新链路</button>
+            <button id="btnScenarioRuntimeExpired" class="warn">场景5：运行时恢复触发</button>
+            <button id="btnScenarioJwtExpired" class="danger">场景7：Self JWT 过期验证</button>
+          </div>
+          <ol class="scenario-list">
+            <li>场景2：连续调两次 `schedule`（refresh=false），第二次应更快且 `_meta.cached=true`。</li>
+            <li>场景3/4：调 `grades/ecard` with `refresh=true`，观察是否回源并成功。</li>
+            <li>场景5/6：客户端无法直接强制学校踢会话，只能通过 `refresh=true` + 服务端日志观测恢复链路。</li>
+            <li>场景7：发送无效 token，确认返回 `4001`。</li>
+          </ol>
+        </div>
+
+        <div class="card col-12">
+          <h2>接口测试面板（可分别测试缓存与强制刷新）</h2>
+          <div class="row">
+            <div class="field col-3">
+              <label for="scheduleDate">/api/schedule date</label>
+              <input id="scheduleDate" type="date" />
+            </div>
+            <div class="field col-3">
+              <label for="portalStartDate">/api/v1/schedule startDate</label>
+              <input id="portalStartDate" type="date" />
+            </div>
+            <div class="field col-3">
+              <label for="portalEndDate">/api/v1/schedule endDate</label>
+              <input id="portalEndDate" type="date" />
+            </div>
+            <div class="field col-3">
+              <label for="gradesTerm">/api/grades term</label>
+              <input id="gradesTerm" type="text" placeholder="2025-2026-1" />
+            </div>
+            <div class="field col-3">
+              <label for="gradesKcxz">/api/grades kcxz</label>
+              <input id="gradesKcxz" type="text" />
+            </div>
+            <div class="field col-3">
+              <label for="gradesKcmc">/api/grades kcmc</label>
+              <input id="gradesKcmc" type="text" />
+            </div>
+          </div>
+          <div class="actions">
+            <button id="btnScheduleCached">Schedule（refresh=false）</button>
+            <button id="btnScheduleRefresh" class="warn">Schedule（refresh=true）</button>
+            <button id="btnPortalScheduleCached">Portal Schedule（refresh=false）</button>
+            <button id="btnPortalScheduleRefresh" class="warn">Portal Schedule（refresh=true）</button>
+            <button id="btnGradesCached">Grades（refresh=false）</button>
+            <button id="btnGradesRefresh" class="warn">Grades（refresh=true）</button>
+            <button id="btnEcardCached">Ecard（refresh=false）</button>
+            <button id="btnEcardRefresh" class="warn">Ecard（refresh=true）</button>
+            <button id="btnUserCached">User（refresh=false）</button>
+            <button id="btnUserRefresh" class="warn">User（refresh=true）</button>
+          </div>
+          <div class="hint">
+            课表接口已做参数校验：`date/startDate/endDate` 必须是 `YYYY-MM-DD`，且 v1 区间不得超过 62 天。
+          </div>
+        </div>
+
+        <div class="card col-4">
+          <h2>最近响应</h2>
+          <div id="latestResponse" class="json-box">{}</div>
+        </div>
+
+        <div class="card col-8">
+          <h2>请求日志</h2>
+          <div id="logBox" class="log-box"></div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      const el = (id) => document.getElementById(id);
+      const BEIJING_TZ = "Asia/Shanghai";
+
+      function beijingParts(date = new Date()) {
+        const parts = new Intl.DateTimeFormat("en-CA", {
+          timeZone: BEIJING_TZ,
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+          hourCycle: "h23",
+        }).formatToParts(date);
+        return Object.fromEntries(parts.map((part) => [part.type, part.value]));
+      }
+
+      function beijingDate(date = new Date()) {
+        const p = beijingParts(date);
+        return `${p.year}-${p.month}-${p.day}`;
+      }
+
+      function beijingDateTime(date = new Date()) {
+        const p = beijingParts(date);
+        return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}:${p.second}`;
+      }
+
+      const nowDate = beijingDate();
+      const in7 = beijingDate(new Date(Date.now() + 7 * 24 * 3600 * 1000));
+
+      el("scheduleDate").value = nowDate;
+      el("portalStartDate").value = nowDate;
+      el("portalEndDate").value = in7;
+
+      const state = {
+        token: "",
+      };
+
+      function ts() {
+        return beijingDateTime();
+      }
+
+      function setToken(token) {
+        state.token = token || "";
+        el("currentToken").value = state.token;
+        renderTokenState();
+      }
+
+      function toPretty(obj) {
+        try {
+          return JSON.stringify(obj, null, 2);
+        } catch {
+          return String(obj);
+        }
+      }
+
+      function appendLog(line, level = "INFO") {
+        const box = el("logBox");
+        box.textContent += `[${ts()}] [${level}] ${line}\n`;
+        box.scrollTop = box.scrollHeight;
+      }
+
+      function showResponse(data) {
+        el("latestResponse").textContent = toPretty(data);
+      }
+
+      function parseJwtPayload(token) {
+        const parts = token.split(".");
+        if (parts.length !== 3) return null;
+        const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+        const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
+        try {
+          return JSON.parse(atob(padded));
+        } catch {
+          return null;
+        }
+      }
+
+      function renderTokenState() {
+        const tokenState = el("tokenState");
+        const tokenExp = el("tokenExp");
+        const token = state.token || el("currentToken").value.trim();
+        state.token = token;
+
+        tokenState.className = "status";
+        tokenExp.className = "status";
+
+        if (!token) {
+          tokenState.textContent = "Token: 未设置";
+          tokenExp.textContent = "exp: -";
+          return;
+        }
+
+        const payload = parseJwtPayload(token);
+        if (!payload) {
+          tokenState.textContent = "Token: 格式无效";
+          tokenState.classList.add("bad");
+          tokenExp.textContent = "exp: 无法解析";
+          tokenExp.classList.add("bad");
+          return;
+        }
+
+        tokenState.textContent = `Token: 已设置 (userId=${payload.userId ?? "-"})`;
+        tokenState.classList.add("ok");
+
+        if (!payload.exp) {
+          tokenExp.textContent = "exp: 未包含";
+          tokenExp.classList.add("warn");
+          return;
+        }
+
+        const expTime = new Date(payload.exp * 1000);
+        const expired = expTime.getTime() <= Date.now();
+        tokenExp.textContent = `exp: ${beijingDateTime(expTime)} (北京时间)`;
+        tokenExp.classList.add(expired ? "bad" : "ok");
+      }
+
+      async function apiRequest(path, options = {}) {
+        const base = el("baseUrl").value.trim().replace(/\/$/, "");
+        const url = base + path;
+        const headers = new Headers(options.headers || {});
+        const auth = state.token || el("currentToken").value.trim();
+
+        if (options.useAuth !== false && auth) {
+          headers.set("Authorization", `Bearer ${auth}`);
+        }
+        if (options.jsonBody) {
+          headers.set("Content-Type", "application/json");
+        }
+
+        const init = {
+          method: options.method || "GET",
+          headers,
+        };
+        if (options.jsonBody) {
+          init.body = JSON.stringify(options.jsonBody);
+        }
+
+        appendLog(`${init.method} ${url}`);
+        const start = performance.now();
+        try {
+          const res = await fetch(url, init);
+          const ms = Math.round(performance.now() - start);
+          let body = null;
+          try {
+            body = await res.json();
+          } catch {
+            body = { raw: await res.text() };
+          }
+
+          appendLog(`← ${res.status} ${res.statusText} (${ms}ms) ${path}`);
+          if (body && body._meta) {
+            appendLog(`_meta: ${toPretty(body._meta)}`);
+          }
+          showResponse(body);
+          return { status: res.status, body };
+        } catch (err) {
+          appendLog(`请求失败: ${err.message || err}`, "ERROR");
+          showResponse({ error: String(err) });
+          return { status: 0, body: { error: String(err) } };
+        }
+      }
+
+      async function doLogin(withCaptcha) {
+        const username = el("username").value.trim();
+        const password = el("password").value;
+        const captcha = el("captcha").value.trim();
+        const sessionId = el("sessionId").value.trim();
+
+        if (!username || !password) {
+          appendLog("登录前请填写学号和密码", "WARN");
+          return;
+        }
+
+        const payload = { username, password };
+        if (withCaptcha) {
+          if (captcha) payload.captcha = captcha;
+          if (sessionId) payload.sessionId = sessionId;
+        }
+
+        const { body } = await apiRequest("/auth/login", {
+          method: "POST",
+          jsonBody: payload,
+          useAuth: false,
+        });
+
+        if (body?.success && body?.data?.token) {
+          setToken(body.data.token);
+          appendLog(`登录成功，token 已写入；studentId=${body.data?.user?.studentId ?? "-"}`, "OK");
+          return;
+        }
+
+        if (body?.needCaptcha && body?.sessionId) {
+          el("sessionId").value = body.sessionId;
+          const img = el("captchaImage");
+          img.style.display = "block";
+          img.src = `data:image/png;base64,${body.captchaImage || ""}`;
+          appendLog("CAS 需要验证码，已填充 sessionId 和验证码图片", "WARN");
+        }
+      }
+
+      function buildSchedulePath(refresh) {
+        const date = el("scheduleDate").value || nowDate;
+        return `/api/schedule?date=${encodeURIComponent(date)}&refresh=${refresh ? "true" : "false"}`;
+      }
+
+      function buildPortalSchedulePath(refresh) {
+        const s = el("portalStartDate").value || nowDate;
+        const e = el("portalEndDate").value || in7;
+        return `/api/v1/schedule?startDate=${encodeURIComponent(s)}&endDate=${encodeURIComponent(e)}&refresh=${refresh ? "true" : "false"}`;
+      }
+
+      function buildGradesPath(refresh) {
+        const term = el("gradesTerm").value.trim();
+        const kcxz = el("gradesKcxz").value.trim();
+        const kcmc = el("gradesKcmc").value.trim();
+        const p = new URLSearchParams();
+        if (term) p.append("term", term);
+        if (kcxz) p.append("kcxz", kcxz);
+        if (kcmc) p.append("kcmc", kcmc);
+        p.append("refresh", refresh ? "true" : "false");
+        return `/api/grades?${p.toString()}`;
+      }
+
+      async function scenarioNormal() {
+        appendLog("场景2：先后请求两次 schedule(refresh=false)，观察 _meta.cached", "INFO");
+        await apiRequest(buildSchedulePath(false));
+        await apiRequest(buildSchedulePath(false));
+      }
+
+      async function scenarioRefresh() {
+        appendLog("场景3/4：强制刷新 grades + ecard，观察回源结果", "INFO");
+        await apiRequest(buildGradesPath(true));
+        await apiRequest("/api/ecard?refresh=true");
+      }
+
+      async function scenarioRuntimeExpired() {
+        appendLog("场景5：触发一次 schedule(refresh=true)，需结合服务端日志观察 SESSION_EXPIRED 自动恢复", "INFO");
+        await apiRequest(buildSchedulePath(true));
+      }
+
+      async function scenarioJwtExpired() {
+        const token = (state.token || el("currentToken").value.trim()) + "x";
+        if (!token.trim()) {
+          appendLog("先登录获取 token，或手动输入 token", "WARN");
+          return;
+        }
+        appendLog("场景7：用无效 token 访问受保护接口，预期 401/4001", "INFO");
+        const original = state.token;
+        state.token = token;
+        await apiRequest("/api/schedule");
+        state.token = original;
+        renderTokenState();
+      }
+
+      el("btnDecodeToken").addEventListener("click", () => {
+        renderTokenState();
+        const payload = parseJwtPayload(el("currentToken").value.trim());
+        if (!payload) {
+          appendLog("Token 解析失败", "WARN");
+          return;
+        }
+        showResponse({ jwtPayload: payload });
+        appendLog(`Token payload 已解析: ${toPretty(payload)}`);
+      });
+
+      el("btnTestBadToken").addEventListener("click", scenarioJwtExpired);
+      el("btnClearToken").addEventListener("click", () => setToken(""));
+
+      el("btnLogin").addEventListener("click", () => doLogin(false));
+      el("btnLoginWithCaptcha").addEventListener("click", () => doLogin(true));
+
+      el("btnHealth").addEventListener("click", () => apiRequest("/health", { useAuth: false }));
+      el("btnScenarioNormal").addEventListener("click", scenarioNormal);
+      el("btnScenarioRefresh").addEventListener("click", scenarioRefresh);
+      el("btnScenarioRuntimeExpired").addEventListener("click", scenarioRuntimeExpired);
+      el("btnScenarioJwtExpired").addEventListener("click", scenarioJwtExpired);
+
+      el("btnScheduleCached").addEventListener("click", () => apiRequest(buildSchedulePath(false)));
+      el("btnScheduleRefresh").addEventListener("click", () => apiRequest(buildSchedulePath(true)));
+      el("btnPortalScheduleCached").addEventListener("click", () => apiRequest(buildPortalSchedulePath(false)));
+      el("btnPortalScheduleRefresh").addEventListener("click", () => apiRequest(buildPortalSchedulePath(true)));
+      el("btnGradesCached").addEventListener("click", () => apiRequest(buildGradesPath(false)));
+      el("btnGradesRefresh").addEventListener("click", () => apiRequest(buildGradesPath(true)));
+      el("btnEcardCached").addEventListener("click", () => apiRequest("/api/ecard?refresh=false"));
+      el("btnEcardRefresh").addEventListener("click", () => apiRequest("/api/ecard?refresh=true"));
+      el("btnUserCached").addEventListener("click", () => apiRequest("/api/user?refresh=false"));
+      el("btnUserRefresh").addEventListener("click", () => apiRequest("/api/user?refresh=true"));
+
+      el("currentToken").addEventListener("input", () => {
+        state.token = el("currentToken").value.trim();
+        renderTokenState();
+      });
+
+      appendLog("测试台已就绪。建议先点“首次登录”，然后用各接口测试缓存/强制刷新。", "OK");
+      renderTokenState();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,68 @@
+export interface TreeholePost {
+  id: number;
+  content: string;
+  avatarUrl: string | null;
+  stats: {
+    likeCount: number;
+    commentCount: number;
+  };
+  viewer: {
+    liked: boolean;
+    isMine: boolean;
+  };
+  publishedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TreeholeComment {
+  id: number;
+  postId: number;
+  parentCommentId: number | null;
+  content: string;
+  avatarUrl: string | null;
+  isMine: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TreeholeAvatar {
+  avatarUrl: string | null;
+}
+
+export interface TreeholeUnreadNotificationCount {
+  unreadCount: number;
+}
+
+export interface TreeholeReadAllNotificationsResult {
+  readCount: number;
+}
+
+export interface TreeholeListResponse {
+  items: TreeholePost[];
+  page: number;
+  pageSize: number;
+  total: number;
+  hasMore: boolean;
+}
+
+export interface TreeholeCommentListResponse {
+  items: TreeholeComment[];
+  page: number;
+  pageSize: number;
+  total: number;
+  hasMore: boolean;
+}
+
+export interface TreeholeMeta {
+  limits: {
+    maxPostLength: number;
+    maxCommentLength: number;
+  };
+  pagination: {
+    defaultPageSize: number;
+    maxPageSize: number;
+    defaultCommentPageSize: number;
+    maxCommentPageSize: number;
+  };
+}

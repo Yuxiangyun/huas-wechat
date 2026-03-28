@@ -1,0 +1,54 @@
+import type { Context, Next } from 'hono';
+import { timingSafeEqual } from 'node:crypto';
+import { config } from '../config';
+
+declare module 'hono' {
+  interface ContextVariableMap {
+    adminUser?: string;
+  }
+}
+
+const BASIC_PREFIX = 'Basic ';
+const AUTH_CHALLENGE = `Basic realm="${config.admin.realm}", charset="UTF-8"`;
+
+function safeEqual(a: string, b: string): boolean {
+  const aBuf = Buffer.from(a, 'utf8');
+  const bBuf = Buffer.from(b, 'utf8');
+  if (aBuf.length !== bBuf.length) return false;
+  return timingSafeEqual(aBuf, bBuf);
+}
+
+function unauthorized(c: Context) {
+  c.header('WWW-Authenticate', AUTH_CHALLENGE);
+  return c.text('Unauthorized', 401);
+}
+
+export async function adminBasicAuthMiddleware(c: Context, next: Next) {
+  const authHeader = c.req.header('Authorization') ?? c.req.header('authorization');
+
+  if (!authHeader?.startsWith(BASIC_PREFIX)) {
+    return unauthorized(c);
+  }
+
+  let decoded = '';
+  try {
+    decoded = Buffer.from(authHeader.slice(BASIC_PREFIX.length), 'base64').toString('utf8');
+  } catch {
+    return unauthorized(c);
+  }
+
+  const separatorIndex = decoded.indexOf(':');
+  if (separatorIndex <= 0) {
+    return unauthorized(c);
+  }
+
+  const username = decoded.slice(0, separatorIndex);
+  const password = decoded.slice(separatorIndex + 1);
+
+  if (!safeEqual(username, config.admin.username) || !safeEqual(password, config.admin.password)) {
+    return unauthorized(c);
+  }
+
+  c.set('adminUser', username);
+  await next();
+}
