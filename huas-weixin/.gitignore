@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+
+# Build outputs
+dist/
+build/
+miniprogram_npm/
+project.private.config.json
+
+# Editor
+.vscode/
+.idea/

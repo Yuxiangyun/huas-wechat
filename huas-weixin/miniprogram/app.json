@@ -1,0 +1,46 @@
+{
+  "pages": [
+    "pages/login/login",
+    "pages/index/index",
+    "pages/more/more",
+    "pages/campus-map/campus-map",
+    "pages/about/about"
+  ],
+  "window": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "校园小助手",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#F9F9FB"
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "#999999",
+    "selectedColor": "#111111",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "课表"
+      },
+      {
+        "pagePath": "pages/more/more",
+        "text": "服务"
+      },
+      {
+        "pagePath": "pages/about/about",
+        "text": "关于"
+      }
+    ]
+  },
+  "networkTimeout": {
+    "request": 15000,
+    "uploadFile": 15000,
+    "downloadFile": 15000,
+    "connectSocket": 15000
+  },
+  "usingComponents": {},
+  "style": "v2",
+  "componentFramework": "glass-easel",
+  "lazyCodeLoading": "requiredComponents"
+}

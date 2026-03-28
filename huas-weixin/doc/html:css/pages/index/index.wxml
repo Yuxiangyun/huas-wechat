@@ -1,0 +1,140 @@
+<view class="schedule-container">
+  <view class="hero-section">
+    <view class="title-area">
+      <view class="title-row">
+        <text class="title-black">{{currentDate}}</text>
+        <text class="title-yellow">周课表</text>
+      </view>
+      <view class="subtitle-row">
+        <view class="subtitle" wx:if="{{currentDataSourceIndex === 0}}">
+          WEEK · {{currentWeek}}
+        </view>
+        <view class="subtitle" wx:else>DATE · {{selectedDate}}</view>
+        <picker class="picker-trigger" mode="selector" range="{{dataSources}}" value="{{currentDataSourceIndex}}" bindchange="onDataSourceChange">
+          <view class="source-picker">
+            <text>{{dataSources[currentDataSourceIndex]}}</text>
+            <text class="nav-arrow icon-down">▼</text>
+          </view>
+        </picker>
+      </view>
+    </view>
+    <view class="action-area">
+      <view class="pill-btn announcement-pill" bindtap="showAnnouncements">
+        公告
+        <view wx:if="{{showAnnouncementDot}}" class="announcement-dot"></view>
+      </view>
+      <view class="pill-btn" bindtap="handleRefresh">刷新</view>
+    </view>
+  </view>
+  <view class="week-nav">
+    <view class="nav-pill" bindtap="prevWeek">
+      <text class="nav-arrow">‹</text>
+      <text>上周</text>
+    </view>
+    <picker mode="date" value="{{selectedDate}}" bindchange="onDateChange">
+      <view class="nav-pill">
+        <text>{{currentDate}}</text>
+        <text class="nav-arrow icon-down">▼</text>
+      </view>
+    </picker>
+    <view wx:if="{{!isCurrentWeek}}" class="nav-pill highlight-pill" bindtap="goToCurrentWeek">
+      <text>本周</text>
+    </view>
+    <view class="nav-pill" bindtap="nextWeek">
+      <text>下周</text>
+      <text class="nav-arrow">›</text>
+    </view>
+  </view>
+  <scroll-view class="schedule-scroll" scroll-x scroll-y enable-flex>
+    <view wx:if="{{!loading && courses.length === 0}}" class="empty-state">
+      <text class="empty-emoji">👻</text>
+      <text class="empty-text">暂无课程，好好休息吧</text>
+    </view>
+    <view wx:else class="table-container {{showWeekend ? '' : 'hide-weekend'}}">
+      <view class="table-row header-row">
+        <view class="time-cell header-cell"></view>
+        <view wx:for="{{days}}" wx:key="index" wx:if="{{showWeekend || index < 5}}" class="day-cell header-cell {{item.isToday ? 'today' : ''}}">
+          <text class="day-name">{{item.name}}</text>
+        </view>
+      </view>
+      <view class="table-row" wx:for="{{sections}}" wx:for-index="sectionIndex" wx:key="sectionIndex">
+        <view class="time-cell" style="height: {{sectionHeight}}rpx;">
+          <text class="time-num">{{item.num}}</text>
+          <text class="time-start">{{item.start}}</text>
+        </view>
+        <view class="day-cell" wx:for="{{7}}" wx:for-index="dayIndex" wx:key="dayIndex" wx:if="{{showWeekend || dayIndex < 5}}" style="height: {{sectionHeight}}rpx;">
+          <view wx:if="{{isCurrentWeek && sectionIndex === 0 && (dayIndex + 1) === todayDayOfWeek && currentTimeLineTop !== null}}" class="time-indicator" style="top: {{currentTimeLineTop}}rpx;">
+            <view class="time-indicator-dot"></view>
+            <view class="time-countdown" wx:if="{{timeLineCountdown}}">{{timeLineCountdown}}</view>
+          </view>
+          <block wx:for="{{courses}}" wx:for-item="course" wx:key="id">
+            <view wx:if="{{course.day === dayIndex + 1 && course.bigSectionStart === sectionIndex + 1}}" class="course-card color-{{course.colorIndex}} {{course.isCustom ? 'custom-card' : ''}}" style="{{course.cardStyle}}" bindtap="showCourseDetail" data-course="{{course}}">
+              <text class="course-name">{{course.name}}</text>
+              <text class="course-location">{{course.location}}</text>
+              <view wx:if="{{course.isCustom}}" class="custom-badge"></view>
+            </view>
+          </block>
+          <view wx:if="{{loading && (dayIndex + sectionIndex) % 2 === 0}}" class="course-card skeleton-box" style="height: calc(100% - 16rpx); width: calc(100% - 12rpx); border: none; box-shadow: none; margin: 8rpx 6rpx;"></view>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+  <view class="modal-mask" wx:if="{{showDetail}}" bindtap="hideDetail">
+    <view class="modal-content" catchtap="stopPropagation">
+      <view class="modal-header">
+        <text class="modal-title">课程详情</text>
+        <view class="modal-close" bindtap="hideDetail">×</view>
+      </view>
+      <view class="modal-body">
+        <view class="detail-item">
+          <text class="detail-label">COURSE</text>
+          <text class="detail-value bold-text">{{detailCourse.name}}</text>
+        </view>
+        <view class="detail-item">
+          <text class="detail-label">LOCATION</text>
+          <text class="detail-value">{{detailCourse.location || '未安排'}}</text>
+        </view>
+        <view class="detail-item">
+          <text class="detail-label">TEACHER</text>
+          <text class="detail-value">{{detailCourse.teacher || '未知'}}</text>
+        </view>
+        <view class="detail-item">
+          <text class="detail-label">TIME</text>
+          <text class="detail-value">
+            周{{detailCourse.dayStr}} 第{{detailCourse.exactStart}}-{{detailCourse.exactEnd}}节
+          </text>
+        </view>
+        <view class="detail-item">
+          <text class="detail-label">WEEKS</text>
+          <text class="detail-value">
+            {{detailCourse.weeksText || detailCourse.weekStr || '未知'}}
+          </text>
+        </view>
+      </view>
+    </view>
+  </view>
+  <view class="modal-mask" wx:if="{{showAnnouncementsModal}}" bindtap="hideAnnouncements">
+    <view class="modal-content" catchtap="stopPropagation">
+      <view class="modal-header">
+        <text class="modal-title">系统公告</text>
+        <view class="modal-close" bindtap="hideAnnouncements">×</view>
+      </view>
+      <scroll-view scroll-y class="modal-body announcement-scroll">
+        <view wx:if="{{announcements.length === 0}}" class="empty-state">
+          <text class="empty-text">暂无公告</text>
+        </view>
+        <view wx:else class="announcement-list">
+          <view wx:for="{{announcements}}" wx:key="id" class="announcement-item type-{{item.type}}">
+            <view class="announcement-item-header">
+              <text class="announcement-item-title" user-select="true">{{item.title}}</text>
+              <text class="announcement-item-date">{{item.date}}</text>
+            </view>
+            <view class="announcement-item-content">
+              <text user-select="true">{{item.content}}</text>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+</view>
